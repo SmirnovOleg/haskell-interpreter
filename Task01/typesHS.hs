@@ -38,13 +38,11 @@ data Expr = NullLiteral
           | KeyWords       KeyWords Expr Expr           
           | Def            Expr Expr Expr
           |                Expr :->: Expr
+          | TypeDef        Expr Expr
 
 {-data Where a b   = Where a b
 data LetIn a b   = LetIn a b
 data CaseOf a b  = CaseOf a b-}
-
---data Func f a = Const a | Func (f a) a           -- Const Expr or Const ?????????? Also need to change
--- f x y ... :: type(x) -> (type(y) -> ...)
 
 {-type IntegerList = List Integer
 type FloatList = List Float
@@ -59,5 +57,3 @@ type DoubleList = List Double-}
           | ValEi   (Either Value Value)
           | ValMb   (Maybe Value)
           | ValPr   (Pair Value Value)-}
-
---data IfThenClause a b c = If a b (Maybe c)     -- if () then else 
