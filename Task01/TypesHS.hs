@@ -37,6 +37,14 @@ data Expr = NullLiteral
           |                Expr :->: Expr
           | TypeDef        Expr Expr
 
+{-Few demo simples
+factorial
+
+
+ListExpr [NameLiteral factorial, NameLiteral n] :=: IfThenClause (Ord (NameLiteral n) Eq (NumLiteral 0)) (NumLiteral 1) (Just (Mul (NameLiteral 0) (ListExpr [NameLiteral factorial, NameLiteral (n-1)])))
+
+-}
+
 {-data Where a b   = Where a b
 data LetIn a b   = LetIn a b
 data CaseOf a b  = CaseOf a b-}
