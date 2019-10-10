@@ -3,18 +3,22 @@ module TypesHs where
 data OrdOp = Eq
            | Lt
            | Gt 
+           deriving Show
 
 data LogicOp = And
              | Or
              | Not  
+             deriving Show
 
 data KeyWords = Where
               | LetIn
               | CaseOf
+              deriving Show
 
 data Type = Int
           | Bool
           | Char
+          deriving Show
 
 data Expr = NullLiteral
           | NameLiteral    String
@@ -29,19 +33,24 @@ data Expr = NullLiteral
           | Mul            Expr Expr
           | Frac           Expr Expr
           | Lambda         Expr
+          | Func           Expr Expr
           | Ord            Expr OrdOp Expr
           | Logic          Expr LogicOp Expr   
           | IfThenClause   Expr Expr (Maybe Expr)      
           | KeyWords       KeyWords Expr Expr           
-          | Def            Expr Expr Expr
+          | Def            Expr Expr
           |                Expr :->: Expr
           | TypeDef        Expr Expr
+          deriving Show
+
+factorial :: Expr          
+factorial = Def (Func (NameLiteral "factorial") (ListExpr [NameLiteral "n"])) (IfThenClause (Ord (NameLiteral "n") Eq (IntLiteral 0)) (IntLiteral 1) (Just (Mul (IntLiteral 0) (Func (NameLiteral "factorial") (ListExpr [NameLiteral ("n-1")])))))
 
 {-Few demo simples
 factorial
 
 
-ListExpr [NameLiteral factorial, NameLiteral n] :=: IfThenClause (Ord (NameLiteral n) Eq (NumLiteral 0)) (NumLiteral 1) (Just (Mul (NameLiteral 0) (ListExpr [NameLiteral factorial, NameLiteral (n-1)])))
+Def (NameLiteral "factorial") [NameLiteral n] (IfThenClause (Ord (NameLiteral n) Eq (NumLiteral 0)) (NumLiteral 1) (Just (Mul (NameLiteral 0) (NameLiteral factorial [NameLiteral (n-1)]))))
 
 -}
 
