@@ -46,6 +46,9 @@ data Expr = NullLiteral
 factorial :: Expr          
 factorial = Def (Func (NameLiteral "factorial") (ListExpr [NameLiteral "n"])) (IfThenClause (Ord (NameLiteral "n") Eq (IntLiteral 0)) (IntLiteral 1) (Just (Mul (IntLiteral 0) (Func (NameLiteral "factorial") (ListExpr [NameLiteral ("n-1")])))))
 
+fibonacci :: Expr
+fibonacci = Def (Func (NameLiteral "fibonacci") (ListExpr [NameLiteral "n"])) (IfThenClause (Logic ((NameLiteral "n") Eq (IntLiteral 0)) Or ((NameLiteral "n") Eq (IntLiteral 1))) (IntLiteral 1) (Just (Add (Func (NameLiteral "fibonacci") (ListExpr [NameLiteral "n-1"])) (Func (NameLiteral "fibonacci") (ListExpr [NameLiteral "n-2"]))))
+
 {-Few demo simples
 factorial
 
