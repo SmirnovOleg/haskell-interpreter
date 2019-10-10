@@ -17,16 +17,15 @@ data Type = Int
           | Char
 
 data Expr = NullLiteral
-          | Const          [Char]
           | NameLiteral    String
           | IntLiteral     Int
           | CharLiteral    Char
           | StringLiteral  String
           | BoolLiteral    Bool
+          | Negate         Expr
           | ListExpr       [Expr]
           | PairExpr       (Expr, Expr)
           | Add            Expr Expr
-          | Negate         Expr
           | Mul            Expr Expr
           | Frac           Expr Expr
           | Lambda         Expr
