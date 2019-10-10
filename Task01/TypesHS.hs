@@ -1,5 +1,4 @@
-data List a = Nil | Cons a (List a)
-data Pair a b = Pair a b
+module TypesHs where
 
 data OrdOp = Eq
            | Lt
@@ -14,19 +13,18 @@ data KeyWords = Where
               | CaseOf
 
 data Type = Int
-          | Double
           | Bool
           | Char
 
 data Expr = NullLiteral
+          | Const          [Char]
           | NameLiteral    String
           | IntLiteral     Int
-          | DoubleLiteral  Double
           | CharLiteral    Char
           | StringLiteral  String
           | BoolLiteral    Bool
-          | ListExpr       (List Expr)
-          | PairExpr       (Pair Expr Expr)
+          | ListExpr       [Expr]
+          | PairExpr       (Expr, Expr)
           | Add            Expr Expr
           | Negate         Expr
           | Mul            Expr Expr
@@ -57,3 +55,6 @@ type DoubleList = List Double-}
           | ValEi   (Either Value Value)
           | ValMb   (Maybe Value)
           | ValPr   (Pair Value Value)-}
+
+{-data List a = Nil | Cons a (List a)
+data Pair a b = Pair a b-}
