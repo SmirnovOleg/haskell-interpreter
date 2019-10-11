@@ -30,50 +30,74 @@ data Expr = NullLiteral
           | ListExpr       [Expr]
           | PairExpr       (Expr, Expr)
           | Add            Expr Expr
+          | Sub            Expr Expr
           | Mul            Expr Expr
           | Frac           Expr Expr
           | Lambda         Expr
-          | Func           Expr Expr
+          | Func           Expr [Expr]
           | Ord            Expr OrdOp Expr
           | Logic          Expr LogicOp Expr   
-          | IfThenClause   Expr Expr (Maybe Expr)      
+          | IfThenElse     Expr Expr (Maybe Expr)      
           | KeyWords       KeyWords Expr Expr           
-          | Def            Expr Expr
+          | Def            Expr [Expr] Expr
           |                Expr :->: Expr
           | TypeDef        Expr Expr
           deriving Show
 
-factorial :: Expr          
-factorial = Def (Func (NameLiteral "factorial") (ListExpr [NameLiteral "n"])) (IfThenClause (Ord (NameLiteral "n") Eq (IntLiteral 0)) (IntLiteral 1) (Just (Mul (IntLiteral 0) (Func (NameLiteral "factorial") (ListExpr [NameLiteral ("n-1")])))))
+fact :: Expr
+fact  = 
+        (
+            Def
+            (NameLiteral "factorial")
+            [NameLiteral "n"]
+            (
+                IfThenElse 
+                (Ord (NameLiteral "n") Eq (IntLiteral 0)) 
+                (IntLiteral 1) 
+                (
+                    Just 
+                    (
+                        Mul
+                        (NameLiteral "n") 
+                        (
+                            Func 
+                            (NameLiteral "factorial")
+                            [Sub (NameLiteral "n") (IntLiteral 1)]
+                        )
+                    )
+                )
+            )
+        )
+
+
+--factorial :: Expr          
+--factorial = Def (NameLiteral "factorial") [NameLiteral "n"] (IfThenClause (Ord (NameLiteral "n") Eq (IntLiteral 0)) (IntLiteral 1) (Just (Mul (NameLiteral "n") (Func (NameLiteral "factorial") [Add (NameLiteral "n") (IntLiteral (-1))]))))
 
 fibonacci :: Expr
-fibonacci = Def (Func (NameLiteral "fibonacci") (ListExpr [NameLiteral "n"])) (IfThenClause (Logic ((NameLiteral "n") Eq (IntLiteral 0)) Or ((NameLiteral "n") Eq (IntLiteral 1))) (IntLiteral 1) (Just (Add (Func (NameLiteral "fibonacci") (ListExpr [NameLiteral "n-1"])) (Func (NameLiteral "fibonacci") (ListExpr [NameLiteral "n-2"]))))
-
-{-Few demo simples
-factorial
-
-
-Def (NameLiteral "factorial") [NameLiteral n] (IfThenClause (Ord (NameLiteral n) Eq (NumLiteral 0)) (NumLiteral 1) (Just (Mul (NameLiteral 0) (NameLiteral factorial [NameLiteral (n-1)]))))
-
--}
-
-{-data Where a b   = Where a b
-data LetIn a b   = LetIn a b
-data CaseOf a b  = CaseOf a b-}
-
-{-type IntegerList = List Integer
-type FloatList = List Float
-type DoubleList = List Double-}
-
-{-data Value = ValInt Int 
-          | ValFt   Float
-          | ValDb   Double
-          | ValCh   Char
-          | ValBool Bool
-          | ValL    (List Value)
-          | ValEi   (Either Value Value)
-          | ValMb   (Maybe Value)
-          | ValPr   (Pair Value Value)-}
-
-{-data List a = Nil | Cons a (List a)
-data Pair a b = Pair a b-}
+fibonacci = 
+    (
+        Def 
+        (NameLiteral "fibonacci") 
+        [NameLiteral "n"] 
+        (
+            IfThenElse 
+            (Logic (Ord (NameLiteral "n") Eq (IntLiteral 0)) Or (Ord (NameLiteral "n") Eq (IntLiteral 1))) 
+            (IntLiteral 1) 
+            (
+                Just 
+                (
+                    Add 
+                    (
+                        Func 
+                        (NameLiteral "fibonacci") 
+                        [Sub (NameLiteral "n") (IntLiteral 1)] 
+                    )
+                    (
+                        Func 
+                        (NameLiteral "fibonacci") 
+                        [Add (NameLiteral "n") (IntLiteral 2)]
+                    )
+                )
+            )
+        )
+    )
