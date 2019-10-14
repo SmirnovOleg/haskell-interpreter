@@ -22,7 +22,7 @@ data Expr = NullLiteral
             | Add            Expr Expr
             | Sub            Expr Expr
             | Mul            Expr Expr
-            | Frac           Expr Expr
+            | Div           Expr Expr
             | Neg            Expr
 
             | Not            Expr
