@@ -8,6 +8,7 @@ copyright:           "2019 Smirnov Oleg, Kanashin Dmitry"
 
 dependencies:
 - base >= 4.7 && < 5
+- parsec
 
 library:
   source-dirs: src
@@ -22,3 +23,4 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - haskell
+    - parsec
