@@ -34,13 +34,14 @@ data Expr = NullLiteral
           | Mul            Expr Expr
           | Frac           Expr Expr
           | Lambda         Expr
-          | Func           Expr [Expr]
+          | Func           {nameFunc :: Expr, params :: [Expr]}
           | Ord            Expr OrdOp Expr
           | Logic          Expr LogicOp Expr   
-          | IfThenElse     Expr Expr (Maybe Expr)      
+          | IfThenElse     {cond :: Expr, thenExpr :: Expr, elseExpr :: (Maybe Expr)}   
           | KeyWords       KeyWords Expr Expr           
-          | Def            Expr [Expr] Expr
+          | Def            {nameFunc :: Expr, params :: [Expr], bodyFunc :: Expr}
           |                Expr :->: Expr
+          | TypeExpr       Type
           | TypeDef        Expr Expr
           deriving Show
 
@@ -69,10 +70,6 @@ fact  =
             )
         )
 
-
---factorial :: Expr          
---factorial = Def (NameLiteral "factorial") [NameLiteral "n"] (IfThenClause (Ord (NameLiteral "n") Eq (IntLiteral 0)) (IntLiteral 1) (Just (Mul (NameLiteral "n") (Func (NameLiteral "factorial") [Add (NameLiteral "n") (IntLiteral (-1))]))))
-
 fibonacci :: Expr
 fibonacci = 
     (
@@ -95,7 +92,7 @@ fibonacci =
                     (
                         Func 
                         (NameLiteral "fibonacci") 
-                        [Add (NameLiteral "n") (IntLiteral 2)]
+                        [Sub (NameLiteral "n") (IntLiteral 2)]
                     )
                 )
             )
