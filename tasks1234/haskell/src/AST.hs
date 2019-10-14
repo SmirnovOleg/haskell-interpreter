@@ -5,12 +5,17 @@ data Type =   Int
             | Char
             deriving Show
 
-data Expr =   NullLiteral
-            | NameLiteral    String
+data Pattern = NamePattern  String
+            | ListPattern   [String]
+            | PairPattern   (String, String)
+            deriving Show
+
+data Expr =   Name           String
             | IntLiteral     Int
             | CharLiteral    Char
             | StringLiteral  String
             | BoolLiteral    Bool
+
             | ListExpr       [Expr]
             | PairExpr       (Expr, Expr)
 
@@ -28,10 +33,9 @@ data Expr =   NullLiteral
             | Ls             Expr Expr
             | Gt             Expr Expr 
 
-            | Lambda         Expr
-            | Func           {name :: Expr, args :: [Expr]}
+            | Call           {func :: Expr, params :: [Expr]}
             | IfThenElse     {condition :: Expr, statement :: Expr, elseStatement :: (Maybe Expr)}
-            | Def            {name :: Expr, args :: [Expr], body :: Expr}
+            | Def            {name :: (Maybe Expr), args :: [Pattern], body :: Expr}
             |                Expr :->: Expr
             | TypeExpr       Type
             | TypeDef        Expr Expr         -- for expressions with ::

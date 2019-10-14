@@ -6,43 +6,46 @@ import AST
 main :: IO ()
 main = testFunc
 
+
+-- factorial n = if n == 0 then 1 else n * fact (n - 1) 
 factorial :: Expr
 factorial = 
         (
             Def
-            (NameLiteral "factorial")
-            [(NameLiteral "n")]
+            (Just (Name "factorial"))
+            [(NamePattern "n")]
             (
                 IfThenElse
-                (Eq (NameLiteral "n") (IntLiteral 0))
+                (Eq (Name "n") (IntLiteral 0))
                 (IntLiteral 1) 
                 (
                     Just 
                     (
                         Mul
-                        (NameLiteral "n") 
+                        (Name "n") 
                         (
-                            Func 
-                            (NameLiteral "factorial")
-                            [Sub (NameLiteral "n") (IntLiteral 1)]
+                            Call 
+                            (Name "factorial")
+                            [Sub (Name "n") (IntLiteral 1)]
                         )
                     )
                 )
             )
         )
 
+-- fibonacci n = if (n == 0) || (n == 1) then 1 else fibonacci (n - 1) + fibonacci (n - 2) 
 fibonacci :: Expr
 fibonacci = 
     (
         Def 
-        (NameLiteral "fibonacci") 
-        [NameLiteral "n"] 
+        (Just (Name "fibonacci")) 
+        [(NamePattern "n")] 
         (
             IfThenElse 
             (
                 Or 
-                (Eq (NameLiteral "n") (IntLiteral 0))
-                (Eq (NameLiteral "n") (IntLiteral 1))
+                (Eq (Name "n") (IntLiteral 0))
+                (Eq (Name "n") (IntLiteral 1))
             ) 
             (IntLiteral 1) 
             (
@@ -50,14 +53,14 @@ fibonacci =
                 (
                     Add 
                     (
-                        Func 
-                        (NameLiteral "fibonacci") 
-                        [Sub (NameLiteral "n") (IntLiteral 1)] 
+                        Call 
+                        (Name "fibonacci") 
+                        [Sub (Name "n") (IntLiteral 1)] 
                     )
                     (
-                        Func 
-                        (NameLiteral "fibonacci") 
-                        [Sub (NameLiteral "n") (IntLiteral 2)]
+                        Call 
+                        (Name "fibonacci") 
+                        [Sub (Name "n") (IntLiteral 2)]
                     )
                 )
             )
