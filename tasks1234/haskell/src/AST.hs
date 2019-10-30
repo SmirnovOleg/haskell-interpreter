@@ -33,9 +33,9 @@ data Expr =   Name           String
             | Ls             Expr Expr
             | Gt             Expr Expr 
 
-            | Call           {func :: Expr, params :: [Expr]}
-            | IfThenElse     {condition :: Expr, statement :: Expr, elseStatement :: (Maybe Expr)}
-            | Def            {name :: (Maybe Expr), args :: [Pattern], body :: Expr}
+            | Call           Expr [Expr]
+            | IfThenElse     Expr Expr Expr
+            | Def            Expr [Pattern] Expr
             |                Expr :->: Expr
             | TypeExpr       Type
             | TypeDef        Expr Expr         -- for expressions with ::
