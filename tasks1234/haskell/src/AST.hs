@@ -12,8 +12,16 @@ data Pattern = NamePattern  Name
              | PairPattern  (Name, Name)
             deriving Show
 
-data Expr = Var            Name
+data BinOp = :+: | :-: | :*: | :/:
+            :&&: | :||: | :==: | :>: | :<:
+        deriving Show
+
+data UnOp = Neg | Not
+
+data Expr = Ident          Name
           | App            Expr [Expr]
+          | AppBinOp       Expr BinOp Expr
+          | AppUnOp        UnOp Expr
           | Def            Name [Pattern] Expr
 
           | IfThenElse     Expr Expr Expr
@@ -25,18 +33,6 @@ data Expr = Var            Name
           | BoolLiteral    Bool
           | ListExpr       [Expr]
           | PairExpr       (Expr, Expr)
-
-          |                Expr :+: Expr
-          |                Expr :-: Expr
-          |                Expr :*: Expr
-          |                Expr :/:Expr
-          |                Expr :&&: Expr
-          |                Expr :||: Expr
-          |                Expr :==: Expr
-          |                Expr :<: Expr
-          |                Expr :>: Expr 
-          | Neg            Expr
-          | Not            Expr
 
           |                Expr :->: Expr
           | TypeExpr       Type
