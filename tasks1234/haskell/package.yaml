@@ -9,6 +9,8 @@ copyright:           "2019 Smirnov Oleg, Kanashin Dmitry"
 dependencies:
 - base >= 4.7 && < 5
 - parsec
+- mtl
+- containers
 
 library:
   source-dirs: src
@@ -24,3 +26,5 @@ executables:
     dependencies:
     - haskell
     - parsec
+    - mtl
+    - containers

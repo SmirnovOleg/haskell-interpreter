@@ -5,37 +5,44 @@ import qualified Data.Map as Map
 import qualified Data.List as List
 
 
-eval :: Env -> Expr -> Safe Expr
 
-eval _ int@(IntLiteral _) = return int
-eval _ bool@(BoolLiteral _) = return bool
-eval _ char@(CharLiteral _) = return char
+eval :: Env -> Expr -> (Env, Safe Expr)
 
-eval env (Ident name) = getByName env name
+eval env int@(IntLiteral _) = (env, return int)
+eval env bool@(BoolLiteral _) = (env, return bool)
+eval env char@(CharLiteral _) = (env, return char)
 
-eval env (IfThenElse pred a b) = do
-    result <- eval env pred
-    if result == (BoolLiteral True) then 
-        eval env a 
-    else 
-        eval env b
+eval env (Ident name) = (env, getByName env name)
 
-eval env (AppBinOp l op r) = do
-    l <- eval env l
-    r <- eval env r
-    eval env (App (Ident $ show op) [l, r])
+eval env (IfThenElse predicate a b) = (env, result) where
+    result = do
+        condition <- snd $ eval env predicate
+        if condition == (BoolLiteral True) then 
+            snd $ eval env a
+        else
+            snd $ eval env b
 
-eval env (AppUnOp op x) = do
-    x <- eval env x
-    eval env (App (Ident $ show op) [x])
+eval env (AppBinOp l op r) = (env, result) where
+    result = do
+        l <- snd $ eval env l
+        r <- snd $ eval env r
+        snd $ eval env (App (Ident $ show op) [l, r])
 
-eval env (App (Ident func) args) = do
-    lambda <- getByName env func
-    result <- apply lambda args
-    return result
+eval env (AppUnOp op x) = (env, result) where
+    result = do
+        x <- snd $ eval env x
+        snd $ eval env (App (Ident $ show op) [x])
 
--- eval env (Def (Name func) params body) = do
---     newEnv <- setByName env func (Lambda params body env)
+eval env (App (Ident func) args) = (env, result) where
+    result = do
+        lambda <- getByName env func
+        app <- apply lambda args
+        return app
+
+eval env (Def func params body) = (nenv, return lambda) where
+    nenv = setByName env func lambda
+    lambda = Lambda params body nenv
+
 
 
 apply :: Expr -> [Expr] -> Safe Expr
