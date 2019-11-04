@@ -6,11 +6,11 @@ main :: IO ()
 main = do
     putStrLn "Hello World!"
 
--- factorial n = if n == 0 then 1 else n * fact (n - 1) 
+-- factorial n = if n == 0 then 1 else n * fact (n - x) \n where x = 1
 factorial :: Expr
 factorial = 
         (
-            Def ("factorial") [(NamePattern "n")]
+            Def ("factorial") [NamePattern "n"]
             (
                 IfThenElse
                 (AppBinOp Eq (Ident "n")  (IntLiteral 0))
