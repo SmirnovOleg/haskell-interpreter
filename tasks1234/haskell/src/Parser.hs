@@ -1,3 +1,6 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
+
 module Parser where
 
 --import           NeatInterpolation              ( text )
@@ -12,11 +15,14 @@ import AST
 
 type Parser = Parsec Void String
 
+scn :: Parser ()
+scn = L.space space1 lineComment empty
+
 sc :: Parser ()
-sc = L.space space1 lineCmnt blockCmnt
- where
-  lineCmnt  = L.skipLineComment "--"
-  blockCmnt = L.skipBlockComment "{-" "-}"
+sc = L.space (void $ some (char ' ' <|> char '\t')) lineComment blockComment
+
+lineComment  = L.skipLineComment "--"
+blockComment = L.skipBlockComment "{-" "-}"
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
@@ -94,6 +100,9 @@ identParser = (lexeme . try) $ do
      then fail $ "name " ++ word ++ " is reserved"
      else return $ Ident word
 
+{-listParser :: Parser Expr
+listParser =  -}
+
 getNameFromIdentList :: [Expr] -> [Name]
 getNameFromIdentList []             = []
 getNameFromIdentList (Ident x : xs) = x : getNameFromIdentList xs
@@ -158,7 +167,11 @@ ifParser = do
   return $ IfThenElse cond then' else' 
 
 {-whereParser :: Parser Expr
-whereParser = do -}
+whereParser = do 
+  stmt <- statement
+  choice [lexeme $ string "where" >> newline, newline >> L.lexeme scn $ string "where"]-}
+
+
 
 
 
@@ -187,8 +200,57 @@ applicationParser = do
 
 defParser :: Parser Expr
 defParser = do
+  skipMany $ symbol " "
   (Ident funcN) <- lexeme identParser
-  params <- lexeme $ many identParser
+  params <- (lexeme $ some identParser) <|> (Parser $ Ident [])
   lexeme $ symbol "="
   stmt <- statement
-  return $ Def funcN (NamePattern <$> (getNameFromIdentList params)) stmt
+  if (params == [])
+    then
+    return $ Def funcN stmt
+    else return $ Def funcN (NamePattern <$> (getNameFromIdentList params)) stmt
+
+
+parseLine :: Parser String
+parseLine = lexeme $ some (notFollowedBy eol >> anySingle)
+
+parseComplexLine :: Parser (String, [String])
+parseComplexLine = L.indentBlock scn p
+  where
+    p = do
+      header <- parseLine
+      return (L.IndentMany Nothing (return . (header, )) parseLineFold)
+
+parseLineFold :: Parser String
+parseLineFold = L.lineFold scn $ \sc' ->
+  let ps = some (alphaNumChar <|> char '-') `sepBy1` try sc'
+  in unwords <$> ps <* scn
+
+pComplexItem :: Parser (String, [String])
+pComplexItem = L.indentBlock scn p
+  where
+    p = do
+      header <- pItem
+      return (L.IndentMany Nothing (return . (header, )) pItem)
+
+pItemList :: Parser (String, [(String, [String])])
+pItemList = L.nonIndented scn (L.indentBlock scn p)
+  where
+    p = do
+      header <- pItem
+      return (L.IndentSome Nothing (return . (header, )) pComplexItem)
+
+pItem :: Parser String
+pItem = lexeme (some (alphaNumChar <|> char '-')) <?> "list item"
+
+myfunc a b = a + b * d + g
+  where
+        d = 5
+        g = 4
+
+parseTwoLines :: Parser String
+parseTwoLines = do
+  x <- L.lexeme scn $ some alphaNumChar
+  --newline
+  y <- lexeme $ some alphaNumChar
+  return $ x ++ y
