@@ -8,7 +8,7 @@ import qualified Data.List as List
 instance Show Expr where
     show (IntLiteral x) = show x
     show (BoolLiteral x) = show x
-    show lambda@(Lambda params body closure) = "<Lambda>"
+    show lambda@(Lambda params body closure) = "<lambda>"
 
 
 eval :: Env -> Expr -> (Env, Safe Expr)
@@ -36,14 +36,37 @@ eval env (AppBinOp op l r) = (env, result) where
         r <- snd $ eval env r
         calc l op r where
             calc (IntLiteral a) Add (IntLiteral b) = return $ IntLiteral (a + b)
-            calc _ Add _  = Left $ WrongType "IntLiteral in Add expected"
+            calc _ Add _  = Left $ WrongType "Int in + operator expected"
+            calc (IntLiteral a) Sub (IntLiteral b) = return $ IntLiteral (a - b)
+            calc _ Sub _  = Left $ WrongType "Int in - operator expected"
+            calc (IntLiteral a) Mul (IntLiteral b) = return $ IntLiteral (a * b)
+            calc _ Mul _  = Left $ WrongType "Int in * operator expected"
+            calc (IntLiteral a) Div (IntLiteral b) = return $ IntLiteral (a `div` b)
+            calc _ Div _  = Left $ WrongType "Int in / operator expected"
+            
+            calc (BoolLiteral a) And (BoolLiteral b) = return $ BoolLiteral (a && b)
+            calc _ And _  = Left $ WrongType "Bool in && operator expected"
+            calc (BoolLiteral a) Or (BoolLiteral b) = return $ BoolLiteral (a || b)
+            calc _ Or _  = Left $ WrongType "Bool in || operator expected"
+
+            calc (IntLiteral a) Eq (IntLiteral b) = return $ BoolLiteral (a == b)
+            calc (BoolLiteral a) Eq (BoolLiteral b) = return $ BoolLiteral (a == b)
+            calc _ Eq _  = Left $ WrongType "Int or Bool in == operator expected"
+            calc (IntLiteral a) Ls (IntLiteral b) = return $ BoolLiteral (a < b)
+            calc _ Ls _  = Left $ WrongType "Int in < operator expected"
+            calc (IntLiteral a) Gt (IntLiteral b) = return $ BoolLiteral (a > b)
+            calc _ Gt _  = Left $ WrongType "Int in > operator expected"
+            
 
 eval env (AppUnOp op x) = (env, result) where
     result = do
         x <- snd $ eval env x
         calc op x where
             calc Neg (IntLiteral a) = return $ IntLiteral (-a)
-            calc Neg _  = Left $ WrongType "IntLiteral in Neg expected"
+            calc Neg _  = Left $ WrongType "Int in unary - operator expected"
+
+            calc Not (BoolLiteral a) = return $ BoolLiteral (not a)
+            calc Not _  = Left $ WrongType "Bool in not operator expected"
 
 eval env (App (Ident func) arg) = (env, result) where
     result = do
