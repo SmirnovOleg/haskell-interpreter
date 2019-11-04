@@ -5,22 +5,23 @@ type Name = String
 data Type = Int
           | Bool
           | Char
-        deriving Show
+        deriving (Show , Ord, Eq) 
 
 data Pattern = NamePattern  Name
              | ListPattern  [Name]
              | PairPattern  (Name, Name)
-            deriving Show
+            deriving (Show , Ord, Eq) 
 
-data BinOp = :+: | :-: | :*: | :/:
-            :&&: | :||: | :==: | :>: | :<:
-        deriving Show
+data BinOp = Add | Sub | Mul | Div 
+            | And | Or | Eq | Gt | Lt
+        deriving (Show , Ord, Eq) 
 
 data UnOp = Neg | Not
+        deriving (Show , Ord, Eq) 
 
 data Expr = Ident          Name
-          | App            Expr [Expr]
-          | AppBinOp       Expr BinOp Expr
+          | App            Expr Expr
+          | AppBinOp       BinOp Expr  Expr
           | AppUnOp        UnOp Expr
           | Def            Name [Pattern] Expr
 
@@ -37,5 +38,4 @@ data Expr = Ident          Name
           |                Expr :->: Expr
           | TypeExpr       Type
           | TypeDef        Expr Expr         -- for expressions with ::
-
-        deriving Show 
+        deriving (Show , Ord, Eq) 
