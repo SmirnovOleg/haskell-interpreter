@@ -26,12 +26,12 @@ data Expr = Ident          Name
           | App            Expr Expr
           | AppBinOp       BinOp Expr Expr
           | AppUnOp        UnOp Expr
-          | Def            Name [Name] Expr  -- fix Name to Pattern 
+          | Def            Name [Pattern] Expr  -- fix Name to Pattern 
 
           | IfThenElse     Expr Expr Expr
           | Where          Expr [Expr]
 
-          | Lambda         [Name] Expr Env   -- fix Name to Pattern
+          | Lambda         [Pattern] Expr Env   -- fix Name to Pattern
 
           | IntLiteral     Int
           | CharLiteral    Char

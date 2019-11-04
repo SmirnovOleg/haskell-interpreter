@@ -8,7 +8,7 @@ import qualified Data.List as List
 instance Show Expr where
     show (IntLiteral x) = show x
     show (BoolLiteral x) = show x
-    show lambda@(Lambda params body closure) = "<lambda>"
+    show lambda@(Lambda patterns body closure) = "<lambda>"
 
 
 eval :: Env -> Expr -> (Env, Safe Expr)
@@ -71,31 +71,31 @@ eval env (AppUnOp op x) = (env, result) where
 eval env (App (Ident func) arg) = (env, result) where
     result = do
         lambda <- getByName env func
-        newLambda <- apply lambda arg
+        newLambda <- apply env lambda arg
         snd $ eval env newLambda
 
-eval env (Def func params body) = (nenv, return lambda) where
+eval env (Def func patterns body) = (nenv, return lambda) where
     nenv = setByName env func lambda
-    lambda = Lambda params body nenv
+    lambda = Lambda patterns body nenv
 
-eval env lambda@(Lambda params body closure) = (env, result) where 
+eval env lambda@(Lambda patterns body closure) = (env, result) where 
     result = 
-        if length params == 0 then
-            snd $ eval (Map.union closure env) body
+        if length patterns == 0 then
+            snd $ eval closure body
         else
             return lambda
 
 
-apply :: Expr -> Expr -> Safe Expr
-apply (Lambda params body closure) arg = 
-    if length params == 0 then do
+apply :: Env -> Expr -> Expr -> Safe Expr
+apply env (Lambda patterns body closure) arg = 
+    if length patterns == 0 then do
         newLambda <- snd $ eval closure body
-        apply newLambda arg
+        apply env newLambda arg
     else
         return $ (Lambda abstr body newClosure) where
-            bindings = zip params [arg]
-            newClosure = bindNames closure bindings
-            abstr = tail params
+            newClosure = bindNames closure (zip patterns [value])
+            value = Lambda [] arg (Map.union closure env)
+            abstr = tail patterns
 
 
 getByName :: Env -> Name -> Safe Expr
@@ -108,8 +108,8 @@ setByName :: Env -> Name -> Expr -> Env
 setByName env name expr = Map.insert name (return expr) env
 
 
-bindNames :: Env -> [(Name, Expr)] -> Env
+bindNames :: Env -> [(Pattern, Expr)] -> Env
 bindNames env [] = env
-bindNames env ((name, expr):bindings) = Map.union other current where
+bindNames env ((NamePattern name, expr) : bindings) = Map.union other current where
     other = bindNames env bindings
     current = setByName env name expr
