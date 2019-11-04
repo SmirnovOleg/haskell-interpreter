@@ -8,22 +8,22 @@ type Name = String
 data Type = Int
           | Bool
           | Char
-        deriving (Show, Eq)
+        deriving (Show, Eq, Read)
 
 data Pattern = NamePattern  Name
              | ListPattern  [Name]
              | PairPattern  (Name, Name)
-        deriving (Show, Eq)
+        deriving (Show, Eq, Read)
 
-data BinOp = Add | (:-:) | (:*:) | (:/:) | 
-            (:&&:) | (:||:) | (:==:) | (:>:) | (:<:)
-        deriving (Show, Eq)
+data BinOp = Add | Sub | Mul | Div | 
+             And | Or | Eq | Gt | Ls
+        deriving (Show, Eq, Read)
 
 data UnOp = Neg | Not 
-        deriving (Show, Eq)
+        deriving (Show, Eq, Read)
 
 data Expr = Ident          Name
-          | App            Expr [Expr]
+          | App            Expr Expr
           | AppBinOp       BinOp Expr Expr
           | AppUnOp        UnOp Expr
           | Def            Name [Name] Expr  -- fix Name to Pattern 
@@ -43,14 +43,14 @@ data Expr = Ident          Name
           |                Expr :->: Expr
           | TypeExpr       Type
           | TypeDef        Expr Expr         -- for expressions with ::
-        deriving (Show, Eq) 
+        deriving (Eq, Read) 
+
 
 data HaskellError = BaseError String
                   | NotInScope Name
                   | WrongNumberOfArgs
                   | WrongType String
-        deriving (Show, Eq)
+        deriving (Show, Eq, Read)
 
 type Safe = Either HaskellError
-
 type Env = Map.Map Name (Safe Expr)
