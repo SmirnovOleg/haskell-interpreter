@@ -15,7 +15,7 @@ data Pattern = NamePattern  Name
              | PairPattern  (Name, Name)
         deriving (Show, Eq)
 
-data BinOp = (:+:) | (:-:) | (:*:) | (:/:) | 
+data BinOp = Add | (:-:) | (:*:) | (:/:) | 
             (:&&:) | (:||:) | (:==:) | (:>:) | (:<:)
         deriving (Show, Eq)
 
@@ -24,7 +24,7 @@ data UnOp = Neg | Not
 
 data Expr = Ident          Name
           | App            Expr [Expr]
-          | AppBinOp       Expr BinOp Expr
+          | AppBinOp       BinOp Expr Expr
           | AppUnOp        UnOp Expr
           | Def            Name [Name] Expr  -- fix Name to Pattern 
 
@@ -48,6 +48,7 @@ data Expr = Ident          Name
 data HaskellError = BaseError String
                   | NotInScope Name
                   | WrongNumberOfArgs
+                  | WrongType String
         deriving (Show, Eq)
 
 type Safe = Either HaskellError
