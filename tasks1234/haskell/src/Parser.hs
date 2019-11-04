@@ -133,7 +133,7 @@ operatorsParser = makeExprParser opsParser operatorTable
 
 boolExprsTable = [ [ prefix "not" (AppUnOp Not) ]
                  , [ binaryN "==" (AppBinOp Eq)
-                   , binaryN "<" (AppBinOp Lt) , binaryN ">" (AppBinOp Gt) ]
+                   , binaryN "<" (AppBinOp Ls) , binaryN ">" (AppBinOp Gt) ]
                  , [ binaryR "&&" (AppBinOp And) ] 
                  , [ binaryR "||" (AppBinOp Or) ]
                  ]
