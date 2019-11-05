@@ -127,7 +127,7 @@ boolExprsTable = [ [ prefix "not" (AppUnOp Not) ]
 
 listExprsTable :: [[Operator Parser Expr]]
 listExprsTable = [ [prefix "fst" (AppUnOp Fst), prefix "snd" (AppUnOp Snd)]
-                 , [ binaryL "++" (AppBinOp Concat), binaryR ":" (AppBinOp Head)]]
+                 , [ binaryL "++" (AppBinOp Concat), binaryR ":" (AppBinOp Push)]]
 -------------------------------
 
 -------------------------------
