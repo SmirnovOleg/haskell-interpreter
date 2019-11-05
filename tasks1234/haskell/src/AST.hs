@@ -14,7 +14,7 @@ data Type = HInt
         deriving (Show, Ord, Eq, Read) 
 
 data Pattern = NamePattern  Name
-             | ListPattern  [Pattern]
+             | ListPattern  Pattern Pattern
              | PairPattern  (Pattern, Pattern)
         deriving (Show, Ord, Eq, Read)
 
@@ -31,12 +31,13 @@ data Expr = Ident          Name
           | App            Expr Expr
           | AppBinOp       BinOp Expr Expr
           | AppUnOp        UnOp Expr
-          | Def            Name [Pattern] Expr  -- fix Name to Pattern 
+          | Def            Name [Pattern] Expr 
 
           | IfThenElse     Expr Expr Expr
           | Where          Expr [Expr]
 
-          | Lambda         [Pattern] Expr Env   -- fix Name to Pattern
+          | Lambda         [Pattern] Expr Env
+		  | UserLambda	   [Pattern] Expr Env
 
           | IntLiteral     Int
           | CharLiteral    Char
@@ -45,7 +46,10 @@ data Expr = Ident          Name
           | ListExpr       [Expr]
           | PairExpr       (Expr, Expr)
 
-          | TypeDef        Name [Type]          -- for expressions with ::
+		  | None
+		  | Undefined
+
+          | TypeDef        Name [Type]
         deriving (Ord, Eq, Read)
 
 

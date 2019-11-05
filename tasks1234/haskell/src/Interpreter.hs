@@ -9,6 +9,7 @@ instance Show Expr where
     show (IntLiteral x) = show x
     show (BoolLiteral x) = show x
     show (ListExpr x) = show x
+    show (None) = ""
     show lambda@(Lambda patterns body closure) = "<lambda>"
 
 
@@ -82,17 +83,30 @@ eval env (App (Ident func) arg) = (env, result) where
         newLambda <- substitute env lambda arg
         snd $ eval env newLambda
 
-eval env (Def func patterns body) = (nenv, return lambda) where
+eval env (Def func patterns body) = (nenv, return None) where
     nenv = setByName env func lambda
     lambda = Lambda patterns body nenv
 
 eval env lambda@(Lambda patterns body closure) = (env, result) where 
     result = 
         if length patterns == 0 then
-            snd $ eval closure body
+            snd $ eval (Map.union closure env) body
         else
             return lambda
 
+eval env (Where body definitions) = (env, result) where
+    result = snd $ eval nenv body
+    nenv = fst $ evalList env definitions
+
+
+evalList :: Env -> [Expr] -> (Env, Safe Expr)
+evalList env [] = (env, return None)
+evalList env (x:xs) = (nenv, xsResult) where
+    xEnv = fst $ eval env x
+    (xsEnv, xsResult) = evalList xEnv xs
+    nenv = Map.union xsEnv xEnv
+
+-- Def "f" [] (Where (AppBinOp Mul (Ident "a") (Ident "b")) [(Def "a" [] (IntLiteral 1)), (Def "b" [] (Ident "a"))])
 
 substitute :: Env -> Expr -> Expr -> Safe Expr
 substitute env (Lambda patterns body closure) arg = 
