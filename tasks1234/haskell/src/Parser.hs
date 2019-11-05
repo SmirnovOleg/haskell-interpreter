@@ -3,18 +3,18 @@
 
 module Parser where
 
---import           NeatInterpolation              ( text )
-import Control.Monad                  ( void )
+import Control.Monad (void)
 import Control.Monad.Combinators.Expr
 import Data.Text (Text)
 import Data.Void
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer    as L
+import qualified Text.Megaparsec.Char.Lexer as L
 import AST
 
 type Parser = Parsec Void String
 
+-------------------------------
 scn :: Parser ()
 scn = L.space space1 lineComment empty
 
@@ -30,42 +30,32 @@ lexeme = L.lexeme sc
 symbol :: String -> Parser String
 symbol = L.symbol sc
 
-reserved = [
-            "true",
-            "false",
-            "where",
-            "let",
-            "in",
-            "do",
-            "if",
-            "then",
-            "else",
-            "case",
-            "of"
-           ]
+parens :: Parser a -> Parser a
+parens = between (symbol "(") (symbol ")")
+-------------------------------
 
-operations = ["+", "-", "/", "*"]
+-------------------------------
+reserved = [
+             "True", "False"
+            , "where"
+            , "let", "in"
+            , "do"
+            , "if", "then", "else"
+            , "case", "of"
+            , "undefined"
+           ]
+-------------------------------
+
+-------------------------------
+undefinedParser :: Parser Expr
+undefinedParser = do
+  lexeme $ string "undefined"
+  return Undefined
 
 boolParser :: Parser Expr
-boolParser = 
-  (trueParser >> return (BoolLiteral True)) <|> 
-  (falseParser >> return (BoolLiteral False))
-    where
-      trueParser = string' "true"
-      falseParser = string' "false"
-
-{-numberParser :: Parser Expr
-numberParser = (negativeParser <|> integerParser) >>= (\x -> return $ (IntLiteral . read) $ x)
-        where
-            negativeParser :: Parser String
-            negativeParser = do
-                neg <- char '-'
-                int <- integerParser
-                return (neg:int)
-            
-            integerParser :: Parser String
-            integerParser = some digitChar
--}
+boolParser = do
+  _bool <- lexeme (string "True" <|> string "False")
+  return $ BoolLiteral $ (read _bool :: Bool)
 
 numberParser :: Parser Expr
 numberParser = do
@@ -74,24 +64,17 @@ numberParser = do
 
 charParser :: Parser Expr
 charParser = do
-    char '\''
-    ch <- anySingle
-    char '\''
-    return (CharLiteral ch)
+  chr <- between (char '\'') (char '\'') anySingle 
+  return $ CharLiteral chr
 
 stringParser :: Parser Expr
-stringParser = between (char '\"') (char '\"') (many anySingle) >>= (\x -> return $ StringLiteral . show $ x)
+stringParser = do
+  str <- between (char '\"') (char '\"') (many anySingle) 
+  return $ StringLiteral str
 
 literalParser = choice [numberParser, charParser, stringParser, boolParser]
 
 identParser :: Parser Expr
-{-identParser = Ident <$> (lexeme $ do
-                  begin <- lowerChar <?> "begin of name in alphabetic case"
-                  end <- many alphaNumChar
-                  let word = begin:end
-                  if (word `elem` reserved)
-                    then fail $ "name " ++ word ++ " is reserved"
-                    else return word)-}
 identParser = (lexeme . try) $ do
   begin <- letterChar
   end <- many alphaNumChar
@@ -100,16 +83,20 @@ identParser = (lexeme . try) $ do
      then fail $ "name " ++ word ++ " is reserved"
      else return $ Ident word
 
-{-listParser :: Parser Expr
-listParser =  -}
+listParser :: Parser Expr
+listParser = do
+  list <- between (symbol "[") (symbol "]") $ sepBy (choice [identParser, literalParser, listParser, pairParser]) $ symbol ","
+  return $ ListExpr list
 
-getNameFromIdentList :: [Expr] -> [Name]
-getNameFromIdentList []             = []
-getNameFromIdentList (Ident x : xs) = x : getNameFromIdentList xs
+pairParser :: Parser Expr
+pairParser = parens $ do
+  left <- choice [identParser, literalParser]
+  symbol ","
+  right <- choice [identParser, literalParser]
+  return $ PairExpr (left, right)
+-------------------------------
 
-parens :: Parser a -> Parser a
-parens = between (lexeme $ symbol "(") (lexeme $ symbol ")")
-
+-------------------------------
 makeOpParser operator name f = operator (f <$ symbol name)
 
 binaryL, binaryN, binaryR :: String -> (Expr -> Expr -> Expr) -> Operator Parser Expr
@@ -120,14 +107,9 @@ binaryR = makeOpParser InfixR
 prefix, postfix :: String -> (Expr -> Expr) -> Operator Parser Expr
 prefix  = makeOpParser Prefix
 postfix = makeOpParser Postfix
+-------------------------------
 
-termsParser :: Parser Expr -> Parser Expr
-termsParser parser = choice
-  [ parens parser
-  , applicationParser
-  , identParser
-  , numberParser ]
-
+-------------------------------
 operatorTable :: [[Operator Parser Expr]]
 operatorTable = operatorTableUn ++ operatorTableBin where
   operatorTableUn  = [ [ (prefix "-" (AppUnOp Neg)) , (prefix "+" id)] ]
@@ -135,26 +117,48 @@ operatorTable = operatorTableUn ++ operatorTableBin where
                      , [ (binaryL "+" (AppBinOp Add)) , (binaryL "-" (AppBinOp Sub)) ]
                      ]
 
-opsParser = termsParser operatorsParser
-
-operatorsParser :: Parser Expr
-operatorsParser = makeExprParser opsParser operatorTable
-
+boolExprsTable :: [[Operator Parser Expr]]                     
 boolExprsTable = [ [ prefix "not" (AppUnOp Not) ]
                  , [ binaryN "==" (AppBinOp Eq)
-                   , binaryN "<" (AppBinOp Lt) , binaryN ">" (AppBinOp Gt) ]
+                   , binaryN "<" (AppBinOp Ls) , binaryN ">" (AppBinOp Gt) ]
                  , [ binaryR "&&" (AppBinOp And) ] 
                  , [ binaryR "||" (AppBinOp Or) ]
                  ]
 
-logicSeqParser :: Parser Expr
-logicSeqParser = termsParser boolExprsParser
-                 
+listExprsTable :: [[Operator Parser Expr]]
+listExprsTable = [ [prefix "fst" (AppUnOp Fst), prefix "snd" (AppUnOp Snd)]
+                 , [ binaryL "++" (AppBinOp Concat), binaryR ":" (AppBinOp Head)]]
+-------------------------------
+
+-------------------------------
+termsParsers :: Parser Expr -> [Parser Expr]
+termsParsers parser = [ parens parser
+                      , applicationParser
+                      , identParser]
+
+termsNumParser :: Parser Expr
+termsNumParser = choice $ (termsParsers numExprsParser) ++ [numberParser]
+
+termsLogicParser :: Parser Expr
+termsLogicParser = choice $ (termsParsers boolExprsParser) ++ [boolExprsParser, numberParser]
+
+termsListParser :: Parser Expr
+termsListParser = choice $ (termsParsers listExprsParser) ++ [stringParser, listParser]
+-------------------------------
+
+-------------------------------
+numExprsParser :: Parser Expr
+numExprsParser = makeExprParser termsNumParser operatorTable
+
 boolExprsParser :: Parser Expr
-boolExprsParser = makeExprParser logicSeqParser boolExprsTable
+boolExprsParser = makeExprParser termsLogicParser boolExprsTable
+
+listExprsParser :: Parser Expr
+listExprsParser = makeExprParser termsListParser listExprsTable
+-------------------------------
 
 statement :: Parser Expr
-statement = choice [ifParser, operatorsParser]
+statement = choice [ifParser, numExprsParser, listExprsParser, undefinedParser]
 
 ifParser :: Parser Expr
 ifParser = do
@@ -166,91 +170,65 @@ ifParser = do
   else' <- lexeme statement
   return $ IfThenElse cond then' else' 
 
-{-whereParser :: Parser Expr
+whereParser :: Parser Expr
 whereParser = do 
-  stmt <- statement
-  choice [lexeme $ string "where" >> newline, newline >> L.lexeme scn $ string "where"]-}
-
-
-
-
-
-  {-funcAppParser :: Parser Expr
-funcAppParser = choice [ do
-                  f <- identParser 
-                  between (some space) (some space) (char '.')
-                  return $ -}
+  stmt <- defParser
+  choice [
+      try $ do
+        lexeme $ string "where" 
+        newline 
+        tabs <- some tab
+        defs <- sepEndBy1 defParser (eol >> string tabs)
+        return $ Where stmt defs
+    , do 
+        newline
+        spaceW <- some tab
+        lexeme $ string "where" 
+        newline
+        tabs <- (string spaceW >> some tab)
+        defs <- sepEndBy1 defParser (eol >> string tabs)
+        return $ Where stmt defs
+         ]
 
 applicationParser :: Parser Expr
-{-applicationParser = do
-  appFunc <- identParser
-  params <- manyTill (choice [identParser, literalParser]) (statement)
-  return $ App appFunc params-}
 applicationParser = do
   appFunc <- identParser
-  param <- many $ choice [parens statement, identParser, literalParser]
+  param <- many $ choice [parens statement, identParser, literalParser, undefinedParser]
   return $ foldl App appFunc param
+
+parseAnyPattern = symbol "_" >> return AnyPattern
+
+parseNamePattern = do
+  (Ident name) <- identParser
+  return $ NamePattern name
+
+parseParenthlessListPattern = do
+  hd <- choice [try parsePairPattern, parseNamePattern]
+  symbol ":"
+  tail <- choice [try parseParenthlessListPattern, parsePairPattern, parseNamePattern]
+  return $ ListPattern hd tail
+
+parseEmptyList = do
+  between (symbol "[") (symbol "]") space 
+  return $ ListPattern EmptyPattern EmptyPattern
+
+parseListPattern = choice [parens parseParenthlessListPattern, parseEmptyList]
+
+parsePairPattern = parens $ do
+  fst <- choice [try parseListPattern, parsePairPattern, parseNamePattern]
+  symbol ","
+  snd <- choice [try parseListPattern, parsePairPattern, parseNamePattern]
+  return $ PairPattern (fst, snd)
   
-  {-helper appFunc where
-    helper func = do
-      param <- many $ choice [parens statement, identParser, literalParser]
-      return $ App appFunc param-}
-
-
-
 defParser :: Parser Expr
 defParser = do
-  skipMany $ symbol " "
+  space
   (Ident funcN) <- lexeme identParser
-  params <- (lexeme $ some identParser) <|> (Parser $ Ident [])
+  params <- many $ choice [try parseListPattern, parsePairPattern, parseNamePattern, parseAnyPattern]
   lexeme $ symbol "="
   stmt <- statement
-  if (params == [])
-    then
-    return $ Def funcN stmt
-    else return $ Def funcN (NamePattern <$> (getNameFromIdentList params)) stmt
+  return $ Def funcN params stmt
 
-
-parseLine :: Parser String
-parseLine = lexeme $ some (notFollowedBy eol >> anySingle)
-
-parseComplexLine :: Parser (String, [String])
-parseComplexLine = L.indentBlock scn p
-  where
-    p = do
-      header <- parseLine
-      return (L.IndentMany Nothing (return . (header, )) parseLineFold)
-
-parseLineFold :: Parser String
-parseLineFold = L.lineFold scn $ \sc' ->
-  let ps = some (alphaNumChar <|> char '-') `sepBy1` try sc'
-  in unwords <$> ps <* scn
-
-pComplexItem :: Parser (String, [String])
-pComplexItem = L.indentBlock scn p
-  where
-    p = do
-      header <- pItem
-      return (L.IndentMany Nothing (return . (header, )) pItem)
-
-pItemList :: Parser (String, [(String, [String])])
-pItemList = L.nonIndented scn (L.indentBlock scn p)
-  where
-    p = do
-      header <- pItem
-      return (L.IndentSome Nothing (return . (header, )) pComplexItem)
-
-pItem :: Parser String
-pItem = lexeme (some (alphaNumChar <|> char '-')) <?> "list item"
-
-myfunc a b = a + b * d + g
-  where
-        d = 5
-        g = 4
-
-parseTwoLines :: Parser String
-parseTwoLines = do
-  x <- L.lexeme scn $ some alphaNumChar
-  --newline
-  y <- lexeme $ some alphaNumChar
-  return $ x ++ y
+startParse :: Parser [Expr]
+startParse = do
+  sepEndBy1 (choice $ try <$> [whereParser , defParser , identParser]) eol

@@ -12,6 +12,8 @@ dependencies:
 - megaparsec
 - parser-combinators
 - text
+- mtl
+- containers
 
 library:
   source-dirs: src
@@ -30,4 +32,5 @@ executables:
     - megaparsec
     - parser-combinators
     - text
-
+    - mtl
+    - containers
