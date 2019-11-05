@@ -97,12 +97,10 @@ eval env (AppUnOp op x) = (env, result) where
             calc Fst _  = Left $ TypeError "Pair in fst operation expected"
             calc Snd (PairExpr (_, p2)) = return $ p2
             calc Snd _  = Left $ TypeError "Pair in snd operation expected"
-            
 
-
-eval env (App (Ident func) arg) = (env, result) where
+eval env (App func arg) = (env, result) where
     result = do
-        lambda <- getByName env func
+        lambda <- snd $ eval env func
         newLambda <- substitute env lambda arg
         snd $ eval env newLambda
 

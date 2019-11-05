@@ -140,7 +140,7 @@ termsNumParser :: Parser Expr
 termsNumParser = choice $ (termsParsers numExprsParser) ++ [numberParser]
 
 termsLogicParser :: Parser Expr
-termsLogicParser = choice $ (termsParsers boolExprsParser) ++ [boolExprsParser, numberParser]
+termsLogicParser = choice $ (termsParsers boolExprsParser) ++ [numberParser]
 
 termsListParser :: Parser Expr
 termsListParser = choice $ (termsParsers listExprsParser) ++ [stringParser, listParser]
