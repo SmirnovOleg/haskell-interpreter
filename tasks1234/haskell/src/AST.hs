@@ -5,18 +5,23 @@ import qualified Data.Map as Map
 
 type Name = String
 
-data Type = Int
-          | Bool
-          | Char
+data Type = HInt
+          | HBool
+		  | HChar
+		  | HList Type
+		  | HPair Type Type
+		  | HLambda Type Type
         deriving (Show, Ord, Eq, Read) 
 
 data Pattern = NamePattern  Name
-             | ListPattern  [Name]
-             | PairPattern  (Name, Name)
+             | ListPattern  [Pattern]
+             | PairPattern  (Pattern, Pattern)
         deriving (Show, Ord, Eq, Read)
 
 data BinOp = Add | Sub | Mul | Div | 
-             And | Or | Eq | Gt | Ls
+			 And | Or | Eq | Gt | Ls |
+			 Concat | Push
+			 
         deriving (Show, Ord, Eq, Read)
 
 data UnOp = Neg | Not 
@@ -40,9 +45,7 @@ data Expr = Ident          Name
           | ListExpr       [Expr]
           | PairExpr       (Expr, Expr)
 
-          |                Expr :->: Expr
-          | TypeExpr       Type
-          | TypeDef        Expr Expr         -- for expressions with ::
+          | TypeDef        Name [Type]          -- for expressions with ::
         deriving (Ord, Eq, Read)
 
 

@@ -8,6 +8,7 @@ import qualified Data.List as List
 instance Show Expr where
     show (IntLiteral x) = show x
     show (BoolLiteral x) = show x
+    show (ListExpr x) = show x
     show lambda@(Lambda patterns body closure) = "<lambda>"
 
 
@@ -16,6 +17,7 @@ eval :: Env -> Expr -> (Env, Safe Expr)
 eval env int@(IntLiteral _) = (env, return int)
 eval env bool@(BoolLiteral _) = (env, return bool)
 eval env char@(CharLiteral _) = (env, return char)
+eval env list@(ListExpr _) = (env, return list)
 
 eval env (Ident name) = (env, result) where
     result = do
@@ -57,6 +59,12 @@ eval env (AppBinOp op l r) = (env, result) where
             calc (IntLiteral a) Gt (IntLiteral b) = return $ BoolLiteral (a > b)
             calc _ Gt _  = Left $ TypeError "Int in > operator expected"
             
+            calc (ListExpr a) Concat (ListExpr b) = return $ ListExpr (a ++ b)
+            calc _ Concat _  = Left $ TypeError "List in ++ operator expected"
+            calc (IntLiteral a) Push (ListExpr b) = return $ ListExpr ((IntLiteral a) : b)
+            calc (BoolLiteral a) Push (ListExpr b) = return $ ListExpr ((BoolLiteral a) : b)
+            calc _ Push _  = 
+                Left $ TypeError "<Int or Bool> and <List of similar type> in : operator expected"
 
 eval env (AppUnOp op x) = (env, result) where
     result = do
@@ -71,7 +79,7 @@ eval env (AppUnOp op x) = (env, result) where
 eval env (App (Ident func) arg) = (env, result) where
     result = do
         lambda <- getByName env func
-        newLambda <- apply env lambda arg
+        newLambda <- substitute env lambda arg
         snd $ eval env newLambda
 
 eval env (Def func patterns body) = (nenv, return lambda) where
@@ -86,11 +94,11 @@ eval env lambda@(Lambda patterns body closure) = (env, result) where
             return lambda
 
 
-apply :: Env -> Expr -> Expr -> Safe Expr
-apply env (Lambda patterns body closure) arg = 
+substitute :: Env -> Expr -> Expr -> Safe Expr
+substitute env (Lambda patterns body closure) arg = 
     if length patterns == 0 then do
         newLambda <- snd $ eval closure body
-        apply env newLambda arg
+        substitute env newLambda arg
     else
         return $ (Lambda abstr body newClosure) where
             newClosure = bindNames closure (zip patterns [value])
