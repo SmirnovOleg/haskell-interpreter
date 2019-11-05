@@ -232,3 +232,7 @@ defParser = do
 startParse :: Parser [Expr]
 startParse = do
   sepEndBy1 (choice $ try <$> [whereParser , defParser , identParser]) eol
+
+myParser :: Parser Expr
+myParser = do
+  choice $ try <$> [whereParser , defParser , applicationParser , identParser]

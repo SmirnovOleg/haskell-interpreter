@@ -30,7 +30,6 @@ data UnOp = Neg | Not | Fst | Snd
         deriving (Show, Ord, Eq, Read)
 
 data Expr = Ident          Name
-          | Undefined
           | App            Expr Expr
           | AppBinOp       BinOp Expr Expr
           | AppUnOp        UnOp Expr
