@@ -8,9 +8,13 @@ import qualified Data.List as List
 instance Show Expr where
     show (IntLiteral x) = show x
     show (BoolLiteral x) = show x
+    show (CharLiteral x) = show x
+    show (StringLiteral x) = show x
     show (ListExpr x) = show x
+    show (PairExpr x) = show x
+    show (Undefined) = "<undefined>"
     show (None) = ""
-    show lambda@(Lambda patterns body closure) = "<lambda>"
+    show lambda@(Lambda patterns body closure) = "<private lambda>"
 
 
 eval :: Env -> Expr -> (Env, Safe Expr)
@@ -18,7 +22,19 @@ eval :: Env -> Expr -> (Env, Safe Expr)
 eval env int@(IntLiteral _) = (env, return int)
 eval env bool@(BoolLiteral _) = (env, return bool)
 eval env char@(CharLiteral _) = (env, return char)
-eval env list@(ListExpr _) = (env, return list)
+eval env (StringLiteral str) = eval env (ListExpr $ map (\c -> CharLiteral c) str)
+
+eval env (Undefined) = (env, (Left UndefinedError))
+eval env (None) = (env, return None)
+
+eval env (ListExpr list) = (env, result) where
+    result = ListExpr <$> mapM (\x -> snd $ eval env x) list
+
+eval env (PairExpr (x,y)) = (env, result) where
+    result = do
+        p1 <- snd $ eval env x
+        p2 <- snd $ eval env y
+        return $ PairExpr (p1, p2)
 
 eval env (Ident name) = (env, result) where
     result = do
@@ -77,6 +93,13 @@ eval env (AppUnOp op x) = (env, result) where
             calc Not (BoolLiteral a) = return $ BoolLiteral (not a)
             calc Not _  = Left $ TypeError "Bool in not operator expected"
 
+            calc Fst (PairExpr (p1, _)) = return $ p1
+            calc Fst _  = Left $ TypeError "Pair in fst operation expected"
+            calc Snd (PairExpr (_, p2)) = return $ p2
+            calc Snd _  = Left $ TypeError "Pair in snd operation expected"
+            
+
+
 eval env (App (Ident func) arg) = (env, result) where
     result = do
         lambda <- getByName env func
@@ -106,7 +129,6 @@ evalList env (x:xs) = (nenv, xsResult) where
     (xsEnv, xsResult) = evalList xEnv xs
     nenv = Map.union xsEnv xEnv
 
--- Def "f" [] (Where (AppBinOp Mul (Ident "a") (Ident "b")) [(Def "a" [] (IntLiteral 1)), (Def "b" [] (Ident "a"))])
 
 substitute :: Env -> Expr -> Expr -> Safe Expr
 substitute env (Lambda patterns body closure) arg = 

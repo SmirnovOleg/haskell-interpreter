@@ -24,7 +24,7 @@ data BinOp = Add | Sub | Mul | Div |
 			 
         deriving (Show, Ord, Eq, Read)
 
-data UnOp = Neg | Not 
+data UnOp = Neg | Not | Fst | Snd
         deriving (Show, Ord, Eq, Read)
 
 data Expr = Ident          Name
@@ -37,7 +37,7 @@ data Expr = Ident          Name
           | Where          Expr [Expr]
 
           | Lambda         [Pattern] Expr Env
-		  | UserLambda	   [Pattern] Expr Env
+		  | UserLambda	   [Pattern] Expr
 
           | IntLiteral     Int
           | CharLiteral    Char
@@ -57,7 +57,8 @@ data HaskellError = BaseError String
                   | NotInScope Name
                   | WrongNumberOfArguments
                   | TypeError String
-                  | ParseError
+				  | ParseError
+				  | UndefinedError
         deriving (Show, Ord, Eq, Read)
 
 type Safe = Either HaskellError
