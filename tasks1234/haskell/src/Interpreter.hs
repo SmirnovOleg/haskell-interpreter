@@ -99,7 +99,7 @@ eval env (Def func patterns body) = (nenv, return None) where
 eval env lambda@(Lambda patterns body closure) = (env, result) where 
     result = 
         if length patterns == 0 then
-            snd $ eval (Map.union closure env) body
+            snd $ eval closure body
         else
             return lambda
 
@@ -126,6 +126,7 @@ substitute env (Lambda patterns body closure) arg =
             newClosure = bindNames closure (zip patterns [value])
             value = Lambda [] arg env
             abstr = tail patterns
+substitute env _ _ = Left WrongArgument
 
 
 getByName :: Env -> Name -> Safe Expr

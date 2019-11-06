@@ -73,6 +73,7 @@ data HaskellError = BaseError String
                   | TypeError String
 				  | ParseError
 				  | UndefinedError
+				  | WrongArgument
         deriving (Show, Ord, Eq, Read)
 
 type Safe = Either HaskellError
