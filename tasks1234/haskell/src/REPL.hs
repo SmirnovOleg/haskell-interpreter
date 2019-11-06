@@ -23,8 +23,9 @@ runRepl :: Env -> IO ()
 runRepl env = do
     input <- prompt "MiniHaskell> "
     case runParser replParser "" input of
-        (Left parseError) -> (putStrLn (show parseError) >> runRepl env)
+        (Left parseError) -> (putStrLn (errorBundlePretty parseError) >> runRepl env)
         (Right expr) -> process $ eval env expr where
             process :: (Env, Safe Expr) -> IO ()
-            process (nenv, Right result) = putStrLn (show result) >> runRepl nenv
+            process (nenv, Right None) = runRepl nenv
+            process (nenv, Right result) = putStrLn (prettyPrint result) >> runRepl nenv
             process (nenv, Left error) = putStrLn (show error) >> runRepl env

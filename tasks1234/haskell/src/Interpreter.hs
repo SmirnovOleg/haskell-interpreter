@@ -124,7 +124,7 @@ substitute env (Lambda patterns body closure) arg =
     else
         return $ (Lambda abstr body newClosure) where
             newClosure = bindNames closure (zip patterns [value])
-            value = Lambda [] arg (Map.union closure env)
+            value = Lambda [] arg env
             abstr = tail patterns
 
 

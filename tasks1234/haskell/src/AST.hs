@@ -52,19 +52,20 @@ data Expr = Ident          Name
 		  | Undefined
 
           | TypeDef        Name [Type]
-		deriving (Ord, Eq, Read)
-		
-instance Show Expr where
-	show (IntLiteral x) = show x
-	show (BoolLiteral x) = show x
-	show (CharLiteral x) = show x
-	show (StringLiteral x) = show x
-	show (ListExpr x) = show x
-	show (PairExpr x) = show x
-	show (Undefined) = "<undefined>"
-	show (None) = ""
-	show lambda@(Lambda patterns body closure) = "<lambda>"
-	show (Ident x) = show x
+		deriving (Show, Ord, Eq, Read)
+
+prettyPrint :: Expr -> String
+prettyPrint (IntLiteral x) = show x
+prettyPrint (BoolLiteral x) = show x
+prettyPrint (CharLiteral x) = show x
+prettyPrint (StringLiteral x) = show x
+prettyPrint (ListExpr x) = show x
+prettyPrint (PairExpr x) = show x
+prettyPrint (Undefined) = "<undefined>"
+prettyPrint (None) = ""
+prettyPrint lambda@(Lambda patterns body closure) = "<lambda>"
+prettyPrint (Ident x) = show x
+prettyPrint _ = ""
 
 data HaskellError = BaseError String
                   | NotInScope Name
