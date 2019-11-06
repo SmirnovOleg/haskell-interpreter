@@ -16,7 +16,6 @@ Implemented features:
     - Works on lambdas
     - Pointless style 
     - Partial application
-- Expressions with `where` keyword
 - `if-then-else` statements
 
 
@@ -26,6 +25,7 @@ TODO
     - Distinguish logic and ord operators
     - Testing!
     - Types and type-definitions
+    - Inline expressions with `where` keyword
 - Interpreter
     - User-lambdas
     - Pattern-matching
