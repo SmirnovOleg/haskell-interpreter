@@ -15,9 +15,6 @@ import AST
 type Parser = Parsec Void String
 
 -------------------------------
-scn :: Parser ()
-scn = L.space space1 lineComment empty
-
 sc :: Parser ()
 sc = L.space (void $ some (char ' ' <|> char '\t')) lineComment blockComment
 
@@ -35,7 +32,7 @@ parens = between (symbol "(") (symbol ")")
 -------------------------------
 
 -------------------------------
-reserved = [
+keyword = [
              "True", "False"
             , "where"
             , "let", "in"
@@ -64,35 +61,35 @@ numberParser = do
 
 charParser :: Parser Expr
 charParser = do
-  chr <- between (char '\'') (char '\'') anySingle 
+  chr <- between (char '\'') (symbol "\'") anySingle 
   return $ CharLiteral chr
 
 stringParser :: Parser Expr
 stringParser = do
-  str <- between (char '\"') (char '\"') (many anySingle) 
+  str <- between (char '\"') (symbol "\"") (many anySingle) 
   return $ StringLiteral str
 
 literalParser = choice [numberParser, charParser, stringParser, boolParser]
 
 identParser :: Parser Expr
 identParser = (lexeme . try) $ do
-  begin <- letterChar
-  end <- many alphaNumChar
-  let word = begin : end
-  if (word `elem` reserved)
-     then fail $ "name " ++ word ++ " is reserved"
+  hd <- lowerChar
+  tl <- many $ choice [alphaNumChar, char '_', char '\'']
+  let word = hd : tl
+  if (word `elem` keyword)
+     then fail $ "name " ++ word ++ " is keyword"
      else return $ Ident word
 
 listParser :: Parser Expr
 listParser = do
-  list <- between (symbol "[") (symbol "]") $ sepBy (choice [identParser, literalParser, listParser, pairParser]) $ symbol ","
+  list <- between (symbol "[") (symbol "]") $ sepBy exprParser $ symbol ","
   return $ ListExpr list
 
 pairParser :: Parser Expr
 pairParser = parens $ do
-  left <- choice [identParser, literalParser]
+  left <- exprParser
   symbol ","
-  right <- choice [identParser, literalParser]
+  right <- exprParser
   return $ PairExpr (left, right)
 -------------------------------
 
@@ -140,7 +137,7 @@ termsNumParser :: Parser Expr
 termsNumParser = choice $ (termsParsers numExprsParser) ++ [numberParser]
 
 termsLogicParser :: Parser Expr
-termsLogicParser = choice $ (termsParsers boolExprsParser) ++ [numberParser]
+termsLogicParser = choice $ (termsParsers boolExprsParser) ++ [numberParser, boolParser]
 
 termsListParser :: Parser Expr
 termsListParser = choice $ (termsParsers listExprsParser) ++ [stringParser, listParser]
@@ -157,17 +154,17 @@ listExprsParser :: Parser Expr
 listExprsParser = makeExprParser termsListParser listExprsTable
 -------------------------------
 
-statement :: Parser Expr
-statement = choice [ifParser, numExprsParser, listExprsParser, undefinedParser]
+exprParser :: Parser Expr
+exprParser = choice [ifParser, numExprsParser, listExprsParser, undefinedParser, boolExprsParser]
 
 ifParser :: Parser Expr
 ifParser = do
   lexeme $ string "if"
   cond <- lexeme boolExprsParser
   lexeme $ string "then"
-  then' <- lexeme statement
+  then' <- choice [try $ lexeme exprParser, parens exprParser]
   lexeme $ string "else"
-  else' <- lexeme statement
+  else' <- choice [try $ lexeme exprParser, parens exprParser]
   return $ IfThenElse cond then' else' 
 
 whereParser :: Parser Expr
@@ -193,7 +190,7 @@ whereParser = do
 applicationParser :: Parser Expr
 applicationParser = do
   appFunc <- identParser
-  param <- many $ choice [parens statement, identParser, literalParser, undefinedParser]
+  param <- many $ choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
   return $ foldl App appFunc param
 
 parseAnyPattern = symbol "_" >> return AnyPattern
@@ -202,17 +199,15 @@ parseNamePattern = do
   (Ident name) <- identParser
   return $ NamePattern name
 
-parseParenthlessListPattern = do
-  hd <- choice [try parsePairPattern, parseNamePattern]
+parseListPattern = parens $ do
+  hd <- choice [try parseListPattern, parsePairPattern, parseNamePattern, parseEmptyList, parseAnyPattern]
   symbol ":"
-  tail <- choice [try parseParenthlessListPattern, parsePairPattern, parseNamePattern]
+  tail <- choice [parseListPattern, parseNamePattern, parseEmptyList, parseAnyPattern]
   return $ ListPattern hd tail
 
 parseEmptyList = do
-  between (symbol "[") (symbol "]") space 
-  return $ ListPattern EmptyPattern EmptyPattern
-
-parseListPattern = choice [parens parseParenthlessListPattern, parseEmptyList]
+  between (symbol "[") (symbol "]") space
+  return $ ListPattern EmptyListPattern EmptyListPattern
 
 parsePairPattern = parens $ do
   fst <- choice [try parseListPattern, parsePairPattern, parseNamePattern]
@@ -224,15 +219,15 @@ defParser :: Parser Expr
 defParser = do
   space
   (Ident funcN) <- lexeme identParser
-  params <- many $ choice [try parseListPattern, parsePairPattern, parseNamePattern, parseAnyPattern]
-  lexeme $ symbol "="
-  stmt <- statement
+  params <- many $ choice [try parseListPattern, parsePairPattern, parseNamePattern, parseEmptyList, parseAnyPattern]
+  symbol "="
+  stmt <- exprParser
   return $ Def funcN params stmt
 
-startParse :: Parser [Expr]
-startParse = do
+programParser :: Parser [Expr]
+programParser = do
   sepEndBy1 (choice $ try <$> [whereParser , defParser , identParser]) eol
 
-myParser :: Parser Expr
-myParser = do
-  choice $ try <$> [whereParser , defParser , applicationParser , identParser]
+replParser :: Parser Expr
+replParser = do
+  choice $ try <$> [whereParser, defParser, exprParser]

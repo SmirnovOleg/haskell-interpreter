@@ -6,7 +6,7 @@ import qualified Data.Map as Map
 type Name = String
 
 data Type = HInt
-          | HBool
+		  | HBool
 		  | HChar
 		  | HList Type
 		  | HPair Type Type
@@ -15,7 +15,7 @@ data Type = HInt
 
 data Pattern = NamePattern  Name
              | AnyPattern
-             | EmptyPattern
+             | EmptyListPattern
              | ListPattern  Pattern Pattern
              | PairPattern  (Pattern, Pattern)
         deriving (Show, Ord, Eq, Read)
@@ -52,8 +52,19 @@ data Expr = Ident          Name
 		  | Undefined
 
           | TypeDef        Name [Type]
-        deriving (Ord, Eq, Read)
-
+		deriving (Ord, Eq, Read)
+		
+instance Show Expr where
+	show (IntLiteral x) = show x
+	show (BoolLiteral x) = show x
+	show (CharLiteral x) = show x
+	show (StringLiteral x) = show x
+	show (ListExpr x) = show x
+	show (PairExpr x) = show x
+	show (Undefined) = "<undefined>"
+	show (None) = ""
+	show lambda@(Lambda patterns body closure) = "<lambda>"
+	show (Ident x) = show x
 
 data HaskellError = BaseError String
                   | NotInScope Name

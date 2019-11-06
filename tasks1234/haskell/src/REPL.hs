@@ -22,12 +22,9 @@ prompt text = do
 runRepl :: Env -> IO ()
 runRepl env = do
     input <- prompt "MiniHaskell> "
-    extract $ parseMaybe myParser input where
-
-        extract :: Maybe Expr -> IO ()
-        extract (Nothing) = putStrLn (show ParseError) >> runRepl env
-        extract (Just parsed) = process $ eval env parsed --eval env (read input)
-
-        process :: (Env, Safe Expr) -> IO ()
-        process (nenv, Right result) = putStrLn (show result) >> runRepl nenv
-        process (nenv, Left error) = putStrLn (show error) >> runRepl env
+    case runParser replParser "" input of
+        (Left parseError) -> (putStrLn (show parseError) >> runRepl env)
+        (Right expr) -> process $ eval env expr where
+            process :: (Env, Safe Expr) -> IO ()
+            process (nenv, Right result) = putStrLn (show result) >> runRepl nenv
+            process (nenv, Left error) = putStrLn (show error) >> runRepl env

@@ -5,18 +5,6 @@ import qualified Data.Map as Map
 import qualified Data.List as List
 
 
-instance Show Expr where
-    show (IntLiteral x) = show x
-    show (BoolLiteral x) = show x
-    show (CharLiteral x) = show x
-    show (StringLiteral x) = show x
-    show (ListExpr x) = show x
-    show (PairExpr x) = show x
-    show (Undefined) = "<undefined>"
-    show (None) = ""
-    show lambda@(Lambda patterns body closure) = "<private lambda>"
-
-
 eval :: Env -> Expr -> (Env, Safe Expr)
 
 eval env int@(IntLiteral _) = (env, return int)
