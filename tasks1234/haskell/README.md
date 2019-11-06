@@ -23,6 +23,7 @@ Implemented features:
 TODO
 - Parser
     - Update lambdas application -- ((f 2) 3)
+    - Distinguish logic and ord operators
     - Testing!
     - Types and type-definitions
 - Interpreter

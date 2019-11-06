@@ -114,24 +114,13 @@ operatorTable = operatorTableUn ++ operatorTableBin where
                      , [ (binaryL "+" (AppBinOp Add)) , (binaryL "-" (AppBinOp Sub)) ]
                      ]
 
-boolExprsTable :: [[Operator Parser Expr]]                     
-boolExprsTable = [ [ prefix "not" (AppUnOp Not) ]
-                 , [ binaryN "==" (AppBinOp Eq)
-                   , binaryN "<" (AppBinOp Ls) , binaryN ">" (AppBinOp Gt) ]
-                 , [ binaryR "&&" (AppBinOp And) ] 
-                 , [ binaryR "||" (AppBinOp Or) ]
-                 ]
-
-logicOperatorsTable :: [[Operator Parser Expr]] 
-logicOperatorsTable = [ [ prefix "not" (AppUnOp Not) ]
-                      , [ binaryR "&&" (AppBinOp And) ] 
-                      , [ binaryR "||" (AppBinOp Or) ]
-                      ]
-
-orderOperatorsTable :: [[Operator Parser Expr]]
-orderOperatorsTable = [ [ binaryN "==" (AppBinOp Eq)
-                      , binaryN "<" (AppBinOp Ls) , binaryN ">" (AppBinOp Gt) ]
-                      ]
+boolOperatorsTable :: [[Operator Parser Expr]]                     
+boolOperatorsTable = [ [ prefix "not" (AppUnOp Not) ]
+                     , [ binaryN "==" (AppBinOp Eq)
+                     , binaryN "<" (AppBinOp Ls) , binaryN ">" (AppBinOp Gt) ]
+                     , [ binaryR "&&" (AppBinOp And) ] 
+                     , [ binaryR "||" (AppBinOp Or) ]
+                     ]
 
 listOperationsTable :: [[Operator Parser Expr]]
 listOperationsTable = [ [prefix "fst" (AppUnOp Fst), prefix "snd" (AppUnOp Snd)]
@@ -144,42 +133,35 @@ termsParsers parser = [ parens parser
                       , applicationParser
                       , identParser]
 
-termsNumParser :: Parser Expr
-termsNumParser = choice $ (termsParsers numOperationsParser) ++ [numberParser]
+termsNumOpParser :: Parser Expr
+termsNumOpParser = choice $ (termsParsers numOperationsParser) ++ [numberParser]
 
-termsLogicParser :: Parser Expr
-termsLogicParser = choice $ (termsParsers logicOperationsParser) ++ [numberParser, boolParser]
+termsBoolOpParser :: Parser Expr
+termsBoolOpParser = choice $ (termsParsers boolOperationsParser) ++ [numberParser, charParser, stringParser, boolParser]
 
-termsOrderParser :: Parser Expr
-termsOrderParser = choice $ (termsParsers orderOperationsParser) ++ [numberParser]
-
-termsListParser :: Parser Expr
-termsListParser = choice $ (termsParsers listOperationsParser) ++ [stringParser, listParser]
+termsListOpParser :: Parser Expr
+termsListOpParser = choice $ (termsParsers listOperationsParser) ++ [stringParser, listParser]
 -------------------------------
 
 -------------------------------
 numOperationsParser :: Parser Expr
-numOperationsParser = makeExprParser termsNumParser operatorTable
+numOperationsParser = makeExprParser termsNumOpParser operatorTable
 
-logicOperationsParser :: Parser Expr
-logicOperationsParser = makeExprParser termsLogicParser logicOperatorsTable
-
-orderOperationsParser :: Parser Expr
-orderOperationsParser = makeExprParser termsOrderParser orderOperatorsTable
+boolOperationsParser :: Parser Expr
+boolOperationsParser = makeExprParser termsBoolOpParser boolOperatorsTable
 
 listOperationsParser :: Parser Expr
-listOperationsParser = makeExprParser termsListParser listOperationsTable
+listOperationsParser = makeExprParser termsListOpParser listOperationsTable
 -------------------------------
 
 exprParser :: Parser Expr
 exprParser = choice [ifParser, numOperationsParser
-                    , listOperationsParser, logicOperationsParser
-                    , orderOperationsParser, undefinedParser]
+                    , listOperationsParser, boolOperationsParser, undefinedParser]
 
 ifParser :: Parser Expr
 ifParser = do
   lexeme $ string "if"
-  cond <- lexeme $ choice [try logicOperationsParser, orderOperationsParser]
+  cond <- lexeme boolOperationsParser
   lexeme $ string "then"
   then' <- choice [try $ lexeme exprParser, parens exprParser]
   lexeme $ string "else"
