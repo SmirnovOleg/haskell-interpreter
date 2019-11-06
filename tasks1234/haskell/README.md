@@ -16,7 +16,6 @@ Implemented features:
     - Works on lambdas
     - Pointless style 
     - Partial application
-- Expressions with `where` keyword
 - `if-then-else` statements
 
 
@@ -25,6 +24,7 @@ TODO
     - Update lambdas application -- ((f 2) 3)
     - Testing!
     - Types and type-definitions
+    - Inline expressions with `where` keyword
 - Interpreter
     - User-lambdas
     - Pattern-matching
