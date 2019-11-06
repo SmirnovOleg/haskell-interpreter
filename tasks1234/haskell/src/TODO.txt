@@ -1,4 +1,0 @@
-добавить в список апп
-bool -> logic ord
-LAMBDA ADD, Application ( (f 2) 3)
-
