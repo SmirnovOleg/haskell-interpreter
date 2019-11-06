@@ -8,7 +8,7 @@ Description:
 
 
 Implemented features:
-- Numbers, bools, characterss, pairs
+- Numbers, bools, characters, pairs
 - Lists, strings
 - Initial binary & unary operators
 - Functions
@@ -23,8 +23,6 @@ Implemented features:
 TODO
 - Parser
     - Update lambdas application -- ((f 2) 3)
-    - Distinguish logic and ord operators
-    - Add applications to ListExpr
     - Testing!
     - Types and type-definitions
 - Interpreter

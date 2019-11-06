@@ -51,8 +51,8 @@ undefinedParser = do
 
 boolParser :: Parser Expr
 boolParser = do
-  _bool <- lexeme (string "True" <|> string "False")
-  return $ BoolLiteral $ (read _bool :: Bool)
+  bool' <- lexeme (string "True" <|> string "False")
+  return $ BoolLiteral $ (read bool' :: Bool)
 
 numberParser :: Parser Expr
 numberParser = do
@@ -122,8 +122,19 @@ boolExprsTable = [ [ prefix "not" (AppUnOp Not) ]
                  , [ binaryR "||" (AppBinOp Or) ]
                  ]
 
-listExprsTable :: [[Operator Parser Expr]]
-listExprsTable = [ [prefix "fst" (AppUnOp Fst), prefix "snd" (AppUnOp Snd)]
+logicOperatorsTable :: [[Operator Parser Expr]] 
+logicOperatorsTable = [ [ prefix "not" (AppUnOp Not) ]
+                      , [ binaryR "&&" (AppBinOp And) ] 
+                      , [ binaryR "||" (AppBinOp Or) ]
+                      ]
+
+orderOperatorsTable :: [[Operator Parser Expr]]
+orderOperatorsTable = [ [ binaryN "==" (AppBinOp Eq)
+                      , binaryN "<" (AppBinOp Ls) , binaryN ">" (AppBinOp Gt) ]
+                      ]
+
+listOperationsTable :: [[Operator Parser Expr]]
+listOperationsTable = [ [prefix "fst" (AppUnOp Fst), prefix "snd" (AppUnOp Snd)]
                  , [ binaryL "++" (AppBinOp Concat), binaryR ":" (AppBinOp Push)]]
 -------------------------------
 
@@ -134,33 +145,41 @@ termsParsers parser = [ parens parser
                       , identParser]
 
 termsNumParser :: Parser Expr
-termsNumParser = choice $ (termsParsers numExprsParser) ++ [numberParser]
+termsNumParser = choice $ (termsParsers numOperationsParser) ++ [numberParser]
 
 termsLogicParser :: Parser Expr
-termsLogicParser = choice $ (termsParsers boolExprsParser) ++ [numberParser, boolParser]
+termsLogicParser = choice $ (termsParsers logicOperationsParser) ++ [numberParser, boolParser]
+
+termsOrderParser :: Parser Expr
+termsOrderParser = choice $ (termsParsers orderOperationsParser) ++ [numberParser]
 
 termsListParser :: Parser Expr
-termsListParser = choice $ (termsParsers listExprsParser) ++ [stringParser, listParser]
+termsListParser = choice $ (termsParsers listOperationsParser) ++ [stringParser, listParser]
 -------------------------------
 
 -------------------------------
-numExprsParser :: Parser Expr
-numExprsParser = makeExprParser termsNumParser operatorTable
+numOperationsParser :: Parser Expr
+numOperationsParser = makeExprParser termsNumParser operatorTable
 
-boolExprsParser :: Parser Expr
-boolExprsParser = makeExprParser termsLogicParser boolExprsTable
+logicOperationsParser :: Parser Expr
+logicOperationsParser = makeExprParser termsLogicParser logicOperatorsTable
 
-listExprsParser :: Parser Expr
-listExprsParser = makeExprParser termsListParser listExprsTable
+orderOperationsParser :: Parser Expr
+orderOperationsParser = makeExprParser termsOrderParser orderOperatorsTable
+
+listOperationsParser :: Parser Expr
+listOperationsParser = makeExprParser termsListParser listOperationsTable
 -------------------------------
 
 exprParser :: Parser Expr
-exprParser = choice [ifParser, numExprsParser, listExprsParser, undefinedParser, boolExprsParser]
+exprParser = choice [ifParser, numOperationsParser
+                    , listOperationsParser, logicOperationsParser
+                    , orderOperationsParser, undefinedParser]
 
 ifParser :: Parser Expr
 ifParser = do
   lexeme $ string "if"
-  cond <- lexeme boolExprsParser
+  cond <- lexeme $ choice [try logicOperationsParser, orderOperationsParser]
   lexeme $ string "then"
   then' <- choice [try $ lexeme exprParser, parens exprParser]
   lexeme $ string "else"
@@ -193,40 +212,40 @@ applicationParser = do
   param <- many $ choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
   return $ foldl App appFunc param
 
-parseAnyPattern = symbol "_" >> return AnyPattern
+underscorePatternParser = symbol "_" >> return UnderscorePattern
 
-parseNamePattern = do
+namePatternParser = do
   (Ident name) <- identParser
   return $ NamePattern name
 
-parseListPattern = parens $ do
-  hd <- choice [try parseListPattern, parsePairPattern, parseNamePattern, parseEmptyList, parseAnyPattern]
+listPatternParser = parens $ do
+  hd <- choice [try listPatternParser, pairPatternParser, namePatternParser, emptyListParser, underscorePatternParser]
   symbol ":"
-  tail <- choice [parseListPattern, parseNamePattern, parseEmptyList, parseAnyPattern]
+  tail <- choice [listPatternParser, namePatternParser, emptyListParser, underscorePatternParser]
   return $ ListPattern hd tail
 
-parseEmptyList = do
+emptyListParser = do
   between (symbol "[") (symbol "]") space
   return $ ListPattern EmptyListPattern EmptyListPattern
 
-parsePairPattern = parens $ do
-  fst <- choice [try parseListPattern, parsePairPattern, parseNamePattern]
+pairPatternParser = parens $ do
+  fst <- choice [try listPatternParser, pairPatternParser, namePatternParser]
   symbol ","
-  snd <- choice [try parseListPattern, parsePairPattern, parseNamePattern]
+  snd <- choice [try listPatternParser, pairPatternParser, namePatternParser]
   return $ PairPattern (fst, snd)
   
 defParser :: Parser Expr
 defParser = do
   space
   (Ident funcN) <- lexeme identParser
-  params <- many $ choice [try parseListPattern, parsePairPattern, parseNamePattern, parseEmptyList, parseAnyPattern]
+  params <- many $ choice [try listPatternParser, pairPatternParser, namePatternParser, emptyListParser, underscorePatternParser]
   symbol "="
   stmt <- exprParser
   return $ Def funcN params stmt
 
 programParser :: Parser [Expr]
 programParser = do
-  sepEndBy1 (choice $ try <$> [whereParser , defParser , identParser]) eol
+  sepEndBy1 (choice $ try <$> [whereParser , defParser]) eol
 
 replParser :: Parser Expr
 replParser = do
