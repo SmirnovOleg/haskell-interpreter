@@ -103,9 +103,9 @@ eval env lambda@(Lambda patterns body closure) = (env, result) where
         else
             return lambda
 
-eval env (Where body definitions) = (env, result) where
-    result = snd $ eval nenv body
-    nenv = fst $ evalMany env definitions
+eval env (Where def@(Def func patterns body) helpers) = (env, result) where
+    result = snd $ eval nenv def
+    nenv = fst $ evalMany env helpers
 
 
 evalMany :: Env -> [Expr] -> (Env, Safe Expr)
