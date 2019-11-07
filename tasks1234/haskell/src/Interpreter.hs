@@ -103,9 +103,10 @@ eval env lambda@(Lambda patterns body closure) = (env, result) where
         else
             return lambda
 
-eval env (Where def@(Def func patterns body) helpers) = (env, result) where
-    result = snd $ eval nenv def
-    nenv = fst $ evalMany env helpers
+eval env (Where (Def func patterns body) helpers) = (nenv, return None) where
+    nenv = setByName env func lambda
+    lambda = Lambda patterns body (Map.union whereEnv nenv)
+    whereEnv = fst $ evalMany env helpers
 
 
 evalMany :: Env -> [Expr] -> (Env, Safe Expr)
