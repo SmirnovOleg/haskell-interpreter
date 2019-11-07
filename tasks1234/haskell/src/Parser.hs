@@ -107,8 +107,8 @@ postfix = makeOpParser Postfix
 -------------------------------
 
 -------------------------------
-numOperationsTable :: [[Operator Parser Expr]]
-numOperationsTable = operatorTableUn ++ operatorTableBin where
+numOperatorsTable :: [[Operator Parser Expr]]
+numOperatorsTable = operatorTableUn ++ operatorTableBin where
   operatorTableUn  = [ [ (prefix "-" (AppUnOp Neg)) , (prefix "+" id)] ]
   operatorTableBin = [ [ (binaryL "*" (AppBinOp Mul)) , (binaryL "`div`"(AppBinOp Div)) ]
                      , [ (binaryL "+" (AppBinOp Add)) , (binaryL "-" (AppBinOp Sub)) ]
@@ -120,9 +120,11 @@ logicOperatorsTable = [ [ prefix "not" (AppUnOp Not) ]
                       , [ binaryR "||" (AppBinOp Or) ]
                       ]
 
-listOperationsTable :: [[Operator Parser Expr]]
-listOperationsTable = [ [prefix "fst" (AppUnOp Fst), prefix "snd" (AppUnOp Snd)]
-                 , [ binaryL "++" (AppBinOp Concat), binaryR ":" (AppBinOp Push)]]
+listOperatorsTable :: [[Operator Parser Expr]]
+listOperatorsTable = [ [ binaryL "++" (AppBinOp Concat), binaryR ":" (AppBinOp Push) ] ]
+
+pairOperatorsTable :: [[Operator Parser Expr]]
+pairOperatorsTable = [ [ prefix "fst" (AppUnOp Fst), prefix "snd" (AppUnOp Snd) ] ]
 -------------------------------
 
 -------------------------------
@@ -139,7 +141,7 @@ termsListParser = choice [try $ parens listOperationsParser, stringParser, charP
 
 -------------------------------
 numOperationsParser :: Parser Expr
-numOperationsParser = makeExprParser termsNumParser numOperationsTable
+numOperationsParser = makeExprParser termsNumParser numOperatorsTable
 
 logicOperationsParser :: Parser Expr
 logicOperationsParser = makeExprParser termsLogicParser logicOperatorsTable
@@ -152,7 +154,7 @@ orderOperationsParser = (try $ parens orderOperationsParser) <|> do
 							return $ AppBinOp sgn l r
 
 listOperationsParser :: Parser Expr
-listOperationsParser = makeExprParser termsListParser listOperationsTable
+listOperationsParser = makeExprParser termsListParser listOperatorsTable
 -------------------------------
 
 exprParser :: Parser Expr
