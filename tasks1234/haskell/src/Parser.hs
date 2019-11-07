@@ -121,7 +121,7 @@ logicOperatorsTable = [ [ prefix "not" (AppUnOp Not) ]
                       ]
 
 listOperatorsTable :: [[Operator Parser Expr]]
-listOperatorsTable = [ [ binaryL "++" (AppBinOp Concat), binaryR ":" (AppBinOp Push) ] ]
+listOperatorsTable = [ [ binaryR "++" (AppBinOp Concat), binaryR ":" (AppBinOp Push) ] ]
 
 pairOperatorsTable :: [[Operator Parser Expr]]
 pairOperatorsTable = [ [ prefix "fst" (AppUnOp Fst), prefix "snd" (AppUnOp Snd) ] ]
