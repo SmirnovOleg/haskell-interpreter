@@ -32,7 +32,7 @@ parens = between (symbol "(") (symbol ")")
 -------------------------------
 
 -------------------------------
-keyword = [
+keywords = [
              "True", "False"
             , "where"
             , "let", "in"
@@ -76,7 +76,7 @@ identParser = (lexeme . try) $ do
   hd <- lowerChar
   tl <- many $ choice [alphaNumChar, char '_', char '\'']
   let word = hd : tl
-  if (word `elem` keyword)
+  if (word `elem` keywords)
      then fail $ "name " ++ word ++ " is keyword"
      else return $ Ident word
 
@@ -107,20 +107,18 @@ postfix = makeOpParser Postfix
 -------------------------------
 
 -------------------------------
-operatorTable :: [[Operator Parser Expr]]
-operatorTable = operatorTableUn ++ operatorTableBin where
+numOperationsTable :: [[Operator Parser Expr]]
+numOperationsTable = operatorTableUn ++ operatorTableBin where
   operatorTableUn  = [ [ (prefix "-" (AppUnOp Neg)) , (prefix "+" id)] ]
-  operatorTableBin = [ [ (binaryL "*" (AppBinOp Mul)) , (binaryL "/"(AppBinOp Div)) ]
+  operatorTableBin = [ [ (binaryL "*" (AppBinOp Mul)) , (binaryL "`div`"(AppBinOp Div)) ]
                      , [ (binaryL "+" (AppBinOp Add)) , (binaryL "-" (AppBinOp Sub)) ]
                      ]
 
-boolOperatorsTable :: [[Operator Parser Expr]]                     
-boolOperatorsTable = [ [ prefix "not" (AppUnOp Not) ]
-                     , [ binaryN "==" (AppBinOp Eq)
-                     , binaryN "<" (AppBinOp Ls) , binaryN ">" (AppBinOp Gt) ]
-                     , [ binaryR "&&" (AppBinOp And) ] 
-                     , [ binaryR "||" (AppBinOp Or) ]
-                     ]
+logicOperatorsTable :: [[Operator Parser Expr]] 
+logicOperatorsTable = [ [ prefix "not" (AppUnOp Not) ]
+                      , [ binaryR "&&" (AppBinOp And) ] 
+                      , [ binaryR "||" (AppBinOp Or) ]
+                      ]
 
 listOperationsTable :: [[Operator Parser Expr]]
 listOperationsTable = [ [prefix "fst" (AppUnOp Fst), prefix "snd" (AppUnOp Snd)]
@@ -128,72 +126,82 @@ listOperationsTable = [ [prefix "fst" (AppUnOp Fst), prefix "snd" (AppUnOp Snd)]
 -------------------------------
 
 -------------------------------
-termsParsers :: Parser Expr -> [Parser Expr]
-termsParsers parser = [ parens parser
-                      , applicationParser
-                      , identParser]
+termsNumParser :: Parser Expr
+termsNumParser = choice [parens numOperationsParser, applicationParser, identParser, numberParser]
 
-termsNumOpParser :: Parser Expr
-termsNumOpParser = choice $ (termsParsers numOperationsParser) ++ [numberParser]
+termsLogicParser :: Parser Expr
+termsLogicParser = choice [try $ parens logicOperationsParser, boolParser, orderOperationsParser]
 
-termsBoolOpParser :: Parser Expr
-termsBoolOpParser = choice $ (termsParsers boolOperationsParser) ++ [numberParser, charParser, stringParser, boolParser]
-
-termsListOpParser :: Parser Expr
-termsListOpParser = choice $ (termsParsers listOperationsParser) ++ [stringParser, listParser]
+termsListParser :: Parser Expr
+termsListParser = choice [try $ parens listOperationsParser, stringParser, charParser
+						 , listParser, pairParser, try logicOperationsParser, numOperationsParser]
 -------------------------------
 
 -------------------------------
 numOperationsParser :: Parser Expr
-numOperationsParser = makeExprParser termsNumOpParser operatorTable
+numOperationsParser = makeExprParser termsNumParser numOperationsTable
 
-boolOperationsParser :: Parser Expr
-boolOperationsParser = makeExprParser termsBoolOpParser boolOperatorsTable
+logicOperationsParser :: Parser Expr
+logicOperationsParser = makeExprParser termsLogicParser logicOperatorsTable
+
+orderOperationsParser :: Parser Expr
+orderOperationsParser = (try $ parens orderOperationsParser) <|> do
+							l <- numOperationsParser
+							sgn <- (Eq <$ symbol "==") <|> (Ls <$ symbol "<") <|> (Gt <$ symbol ">")
+							r <- numOperationsParser
+							return $ AppBinOp sgn l r
 
 listOperationsParser :: Parser Expr
-listOperationsParser = makeExprParser termsListOpParser listOperationsTable
+listOperationsParser = makeExprParser termsListParser listOperationsTable
 -------------------------------
 
 exprParser :: Parser Expr
-exprParser = choice [ifParser, numOperationsParser
-                    , listOperationsParser, boolOperationsParser, undefinedParser]
+exprParser = choice [ifParser, listOperationsParser, undefinedParser]
 
 ifParser :: Parser Expr
 ifParser = do
   lexeme $ string "if"
-  cond <- lexeme boolOperationsParser
+  cond <- lexeme logicOperationsParser
   lexeme $ string "then"
-  then' <- choice [try $ lexeme exprParser, parens exprParser]
+  then' <- choice [parens exprParser, exprParser]
   lexeme $ string "else"
-  else' <- choice [try $ lexeme exprParser, parens exprParser]
+  else' <- choice [parens exprParser, exprParser]
   return $ IfThenElse cond then' else' 
+
+-------------------------------
+inlineWhereBlockParser :: Parser [Expr]
+inlineWhereBlockParser = do
+	lexeme $ string "where" 
+	defs <- between (symbol "{") (symbol "}") (sepBy1 defParser (symbol ";"))
+			<|> (:[]) <$> defParser
+	return defs
+
+newLineWhereBlockParser :: Parser [Expr]
+newLineWhereBlockParser = choice [
+	try $ do
+	  lexeme $ string "where" 
+	  newline 
+	  tabs <- some tab
+	  defs <- sepEndBy1 defParser (eol >> string tabs)
+	  return defs
+  , do 
+	  newline
+	  spaceW <- some tab
+	  lexeme $ string "where" 
+	  newline
+	  tabs <- (string spaceW >> some tab)
+	  defs <- sepEndBy1 defParser (eol >> string tabs)
+	  return defs
+	   ]
 
 whereParser :: Parser Expr
 whereParser = do 
   stmt <- defParser
-  choice [
-      try $ do
-        lexeme $ string "where" 
-        newline 
-        tabs <- some tab
-        defs <- sepEndBy1 defParser (eol >> string tabs)
-        return $ Where stmt defs
-    , do 
-        newline
-        spaceW <- some tab
-        lexeme $ string "where" 
-        newline
-        tabs <- (string spaceW >> some tab)
-        defs <- sepEndBy1 defParser (eol >> string tabs)
-        return $ Where stmt defs
-         ]
+  defs <- newLineWhereBlockParser <|> inlineWhereBlockParser
+  return $ Where stmt defs
+-------------------------------
 
-applicationParser :: Parser Expr
-applicationParser = do
-  appFunc <- identParser
-  param <- many $ choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
-  return $ foldl App appFunc param
-
+-------------------------------
 underscorePatternParser = symbol "_" >> return UnderscorePattern
 
 namePatternParser = do
@@ -215,6 +223,7 @@ pairPatternParser = parens $ do
   symbol ","
   snd <- choice [try listPatternParser, pairPatternParser, namePatternParser]
   return $ PairPattern (fst, snd)
+-------------------------------
   
 defParser :: Parser Expr
 defParser = do
@@ -224,6 +233,12 @@ defParser = do
   symbol "="
   stmt <- exprParser
   return $ Def funcN params stmt
+
+applicationParser :: Parser Expr
+applicationParser = do
+  appFunc <- identParser
+  param <- many $ choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
+  return $ foldl App appFunc param
 
 programParser :: Parser [Expr]
 programParser = do
