@@ -14,7 +14,7 @@ data Type = HInt
         deriving (Show, Ord, Eq, Read) 
 
 data Pattern = NamePattern  Name
-             | UnderscorePattern
+             | WildCardPattern
              | EmptyListPattern
              | ListPattern  Pattern Pattern
              | PairPattern  (Pattern, Pattern)

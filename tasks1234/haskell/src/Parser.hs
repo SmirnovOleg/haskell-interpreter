@@ -10,6 +10,7 @@ import Data.Void
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
+import Text.Pretty.Simple 
 import AST
 
 type Parser = Parsec Void String
@@ -126,23 +127,24 @@ listOperationsTable = [ [prefix "fst" (AppUnOp Fst), prefix "snd" (AppUnOp Snd)]
 -------------------------------
 
 -------------------------------
-termsNumParser :: Parser Expr
-termsNumParser = choice [parens numOperationsParser, applicationParser, identParser, numberParser]
+numOperandsParser :: Parser Expr
+numOperandsParser = choice [applicationParser, try $ parens numOperationsParser,  identParser, numberParser]
 
-termsLogicParser :: Parser Expr
-termsLogicParser = choice [try $ parens logicOperationsParser, boolParser, orderOperationsParser]
+logicOperandsParser :: Parser Expr
+logicOperandsParser = choice [try $ parens logicOperationsParser, boolParser, orderOperationsParser] 
 
-termsListParser :: Parser Expr
-termsListParser = choice [try $ parens listOperationsParser, stringParser, charParser
-						 , listParser, pairParser, try logicOperationsParser, numOperationsParser]
+listOperandsParser :: Parser Expr
+listOperandsParser = choice [applicationParser, try $ parens logicOperationsParser, try $ parens numOperationsParser
+						 	, try $ parens listOperationsParser, literalParser
+						 	, listParser, try pairParser]
 -------------------------------
 
 -------------------------------
 numOperationsParser :: Parser Expr
-numOperationsParser = makeExprParser termsNumParser numOperationsTable
+numOperationsParser = makeExprParser numOperandsParser numOperationsTable
 
 logicOperationsParser :: Parser Expr
-logicOperationsParser = makeExprParser termsLogicParser logicOperatorsTable
+logicOperationsParser = (makeExprParser logicOperandsParser logicOperatorsTable) <?> "logic operation"
 
 orderOperationsParser :: Parser Expr
 orderOperationsParser = (try $ parens orderOperationsParser) <|> do
@@ -152,16 +154,16 @@ orderOperationsParser = (try $ parens orderOperationsParser) <|> do
 							return $ AppBinOp sgn l r
 
 listOperationsParser :: Parser Expr
-listOperationsParser = makeExprParser termsListParser listOperationsTable
+listOperationsParser = makeExprParser listOperandsParser listOperationsTable
 -------------------------------
 
 exprParser :: Parser Expr
-exprParser = choice [ifParser, listOperationsParser, undefinedParser]
+exprParser = choice [try $ parens exprParser, try numOperationsParser, try listOperationsParser, try orderOperationsParser, try logicOperationsParser, ifParser, undefinedParser]
 
 ifParser :: Parser Expr
 ifParser = do
   lexeme $ string "if"
-  cond <- lexeme logicOperationsParser
+  cond <- lexeme logicOperationsParser <?> "logic operations"
   lexeme $ string "then"
   then' <- choice [parens exprParser, exprParser]
   lexeme $ string "else"
@@ -202,41 +204,41 @@ whereParser = do
 -------------------------------
 
 -------------------------------
-underscorePatternParser = symbol "_" >> return UnderscorePattern
+wildCardPatternParser = symbol "_" >> return WildCardPattern
 
 namePatternParser = do
   (Ident name) <- identParser
   return $ NamePattern name
 
 listPatternParser = parens $ do
-  hd <- choice [try listPatternParser, pairPatternParser, namePatternParser, emptyListParser, underscorePatternParser]
+  hd <- choice [try listPatternParser, pairPatternParser, namePatternParser, emptyListParser, wildCardPatternParser]
   symbol ":"
-  tail <- choice [listPatternParser, namePatternParser, emptyListParser, underscorePatternParser]
+  tail <- choice [listPatternParser, namePatternParser, emptyListParser, wildCardPatternParser]
   return $ ListPattern hd tail
 
 emptyListParser = do
   between (symbol "[") (symbol "]") space
-  return $ ListPattern EmptyListPattern EmptyListPattern
+  return $ EmptyListPattern
 
 pairPatternParser = parens $ do
-  fst <- choice [try listPatternParser, pairPatternParser, namePatternParser]
+  fst <- choice [try listPatternParser, pairPatternParser, namePatternParser, wildCardPatternParser]
   symbol ","
-  snd <- choice [try listPatternParser, pairPatternParser, namePatternParser]
+  snd <- choice [try listPatternParser, pairPatternParser, namePatternParser, wildCardPatternParser]
   return $ PairPattern (fst, snd)
 -------------------------------
   
 defParser :: Parser Expr
 defParser = do
   space
-  (Ident funcN) <- lexeme identParser
-  params <- many $ choice [try listPatternParser, pairPatternParser, namePatternParser, emptyListParser, underscorePatternParser]
+  (Ident funcN) <- lexeme identParser <?> "function name"
+  params <- many $ choice [try listPatternParser, pairPatternParser, namePatternParser, emptyListParser, wildCardPatternParser]
   symbol "="
   stmt <- exprParser
   return $ Def funcN params stmt
 
 applicationParser :: Parser Expr
 applicationParser = do
-  appFunc <- identParser
+  appFunc <- choice [try $ parens exprParser, identParser]
   param <- many $ choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
   return $ foldl App appFunc param
 
@@ -246,4 +248,5 @@ programParser = do
 
 replParser :: Parser Expr
 replParser = do
+  space
   choice $ try <$> [whereParser, defParser, exprParser]
