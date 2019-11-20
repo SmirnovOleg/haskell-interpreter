@@ -31,6 +31,7 @@ data UnOp = Neg | Not | Fst | Snd
 
 data Expr = Ident          Name
           | App            Expr Expr
+          | AppBin         Expr Expr Expr
           | AppBinOp       BinOp Expr Expr
           | AppUnOp        UnOp Expr
           | Def            Name [Pattern] Expr 

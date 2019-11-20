@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE TemplateHaskell#-}
 
 module Parser where
 
@@ -12,6 +13,9 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Pretty.Simple 
 import AST
+import Tests
+
+type Text = String
 
 type Parser = Parsec Void String
 
@@ -33,15 +37,15 @@ parens = between (symbol "(") (symbol ")")
 -------------------------------
 
 -------------------------------
-keywords = [
+keywords =  [
              "True", "False"
-            , "where"
+        	, "where"
             , "let", "in"
             , "do"
             , "if", "then", "else"
             , "case", "of"
             , "undefined"
-           ]
+            ]
 -------------------------------
 
 -------------------------------
@@ -67,7 +71,8 @@ charParser = do
 
 stringParser :: Parser Expr
 stringParser = do
-  str <- between (char '\"') (symbol "\"") (many anySingle) 
+  (char '\"') 
+  str <- manyTill anySingle (symbol "\"")
   return $ StringLiteral str
 
 literalParser = choice [numberParser, charParser, stringParser, boolParser]
@@ -94,76 +99,113 @@ pairParser = parens $ do
   return $ PairExpr (left, right)
 -------------------------------
 
+{-wrapInParens :: Parser String -> Parser String
+wrapInParens parseOp = do
+	op <- parseOp
+	return $ "(" ++ op ++ ")"
+
+numOperations :: [String]
+numOperations = [ "+", "-", "div", "*"]
+				 
+logicOperations :: [String]
+logicOperations = [ "not", "&&", "||"]
+
+listOperations :: [String]
+listOperations = [ ":", "++"]-}
+
 -------------------------------
-makeOpParser operator name f = operator (f <$ symbol name)
+makeOpParser f operator name = operator (symbol name >>= \n -> return $ f (Ident name))
 
-binaryL, binaryN, binaryR :: String -> (Expr -> Expr -> Expr) -> Operator Parser Expr
-binaryL = makeOpParser InfixL
-binaryN = makeOpParser InfixN
-binaryR = makeOpParser InfixR
-  
-prefix, postfix :: String -> (Expr -> Expr) -> Operator Parser Expr
-prefix  = makeOpParser Prefix
-postfix = makeOpParser Postfix
+binaryOp = makeOpParser AppBin
+
+binaryL = binaryOp InfixL
+binaryN = binaryOp InfixN
+binaryR = binaryOp InfixR
+
+prefixOp = makeOpParser App
+
+prefix  = prefixOp Prefix
+postfix = prefixOp Postfix
 -------------------------------
 
 -------------------------------
-numOperationsTable :: [[Operator Parser Expr]]
-numOperationsTable = operatorTableUn ++ operatorTableBin where
-  operatorTableUn  = [ [ (prefix "-" (AppUnOp Neg)) , (prefix "+" id)] ]
-  operatorTableBin = [ [ (binaryL "*" (AppBinOp Mul)) , (binaryL "`div`"(AppBinOp Div)) ]
-                     , [ (binaryL "+" (AppBinOp Add)) , (binaryL "-" (AppBinOp Sub)) ]
-                     ]
+operationsTable :: [[Operator Parser Expr]]
+operationsTable = 	[ [ prefix "-" ] 
+	  				, [ binaryL "*", InfixL (symbol "`div`" >> return (AppBin (Ident "div"))) ]
+					, [ binaryL "+", binaryL "-" ]
+					, [ binaryL "++", binaryR ":" ]
+					, [ binaryN ">", binaryN "<", binaryN "==" ]
+					]
 
-logicOperatorsTable :: [[Operator Parser Expr]] 
-logicOperatorsTable = [ [ prefix "not" (AppUnOp Not) ]
-                      , [ binaryR "&&" (AppBinOp And) ] 
-                      , [ binaryR "||" (AppBinOp Or) ]
-                      ]
-
-listOperationsTable :: [[Operator Parser Expr]]
-listOperationsTable = [ [prefix "fst" (AppUnOp Fst), prefix "snd" (AppUnOp Snd)]
-                 , [ binaryL "++" (AppBinOp Concat), binaryR ":" (AppBinOp Push)]]
+logicOperationsTable :: [[Operator Parser Expr]]
+logicOperationsTable =  [ [ prefix "not" ]
+						, [ binaryR "&&" ] 
+						, [ binaryR "||" ] 
+						]
 -------------------------------
 
 -------------------------------
 numOperandsParser :: Parser Expr
-numOperandsParser = choice [applicationParser, try $ parens numOperationsParser,  identParser, numberParser]
+numOperandsParser = choice  [ try applicationParser, try $ parens numOperationsParser
+							, numberParser]
 
 logicOperandsParser :: Parser Expr
-logicOperandsParser = choice [try $ parens logicOperationsParser, boolParser, orderOperationsParser] 
+logicOperandsParser = choice [try $ parens logicOperationsParser, boolParser, orderOperationsParser]
+
+orderOperandsParser :: Parser Expr
+orderOperandsParser = parens numOperationsParser <|> numOperationsParser
 
 listOperandsParser :: Parser Expr
-listOperandsParser = choice [applicationParser, try $ parens logicOperationsParser, try $ parens numOperationsParser
-						 	, try $ parens listOperationsParser, literalParser
-						 	, listParser, try pairParser]
+listOperandsParser = choice [ try applicationParser, try $ parens logicOperationsParser, try $ parens numOperationsParser
+						 	, parens listOperationsParser, pairParser, literalParser
+						 	, listParser]
 -------------------------------
 
 -------------------------------
+{-operationToApp :: Expr -> Parser Expr
+operationToApp op = do
+	case op of
+		AppBinOp _ _ _ -> binOpToApp op
+		_ -> return op
+
+binOpToApp :: Expr -> Parser Expr
+binOpToApp (AppBinOp op l r) = return $ App (App (Ident $ show op) l) r
+
+unOpToApp :: Expr -> Parser Expr
+unOpToApp (AppUnOp op body) = return $ App (Ident $ show op) body-}
+
 numOperationsParser :: Parser Expr
-numOperationsParser = makeExprParser numOperandsParser numOperationsTable
+numOperationsParser = makeExprParser numOperandsParser operationsTable
 
 logicOperationsParser :: Parser Expr
-logicOperationsParser = (makeExprParser logicOperandsParser logicOperatorsTable) <?> "logic operation"
+logicOperationsParser = makeExprParser logicOperandsParser logicOperationsTable
 
-orderOperationsParser :: Parser Expr
+{-orderOperationsParser :: Parser Expr
 orderOperationsParser = (try $ parens orderOperationsParser) <|> do
 							l <- numOperationsParser
 							sgn <- (Eq <$ symbol "==") <|> (Ls <$ symbol "<") <|> (Gt <$ symbol ">")
 							r <- numOperationsParser
-							return $ AppBinOp sgn l r
+							return $ AppBinOp sgn l r-}
+
+orderOperationsParser :: Parser Expr
+orderOperationsParser = makeExprParser orderOperandsParser operationsTable
 
 listOperationsParser :: Parser Expr
-listOperationsParser = makeExprParser listOperandsParser listOperationsTable
+listOperationsParser = makeExprParser listOperandsParser operationsTable
 -------------------------------
 
 exprParser :: Parser Expr
-exprParser = choice [try $ parens exprParser, try numOperationsParser, try listOperationsParser, try orderOperationsParser, try logicOperationsParser, ifParser, undefinedParser]
+exprParser = space >> choice [ try numOperationsParser
+							 , try logicOperationsParser, try listOperationsParser
+							 , try orderOperationsParser
+							 , ifParser, try $ parens exprParser
+							 , undefinedParser]
 
 ifParser :: Parser Expr
 ifParser = do
   lexeme $ string "if"
-  cond <- lexeme logicOperationsParser <?> "logic operations"
+  cond <- (lexeme $ choice  [ try logicOperationsParser
+  							, try applicationParser, identParser]) <?> "logic operation/operand"
   lexeme $ string "then"
   then' <- choice [parens exprParser, exprParser]
   lexeme $ string "else"
@@ -174,8 +216,8 @@ ifParser = do
 inlineWhereBlockParser :: Parser [Expr]
 inlineWhereBlockParser = do
 	lexeme $ string "where" 
-	defs <- between (symbol "{") (symbol "}") (sepBy1 defParser (symbol ";"))
-			<|> (:[]) <$> defParser
+	defs <- between (symbol "{") (symbol "}") (sepBy1 (choice [try whereParser, defParser]) (symbol ";"))
+			<|> (:[]) <$> (choice [try whereParser, defParser])
 	return defs
 
 newLineWhereBlockParser :: Parser [Expr]
@@ -206,14 +248,16 @@ whereParser = do
 -------------------------------
 wildCardPatternParser = symbol "_" >> return WildCardPattern
 
+nameEmptyWildCard = [namePatternParser, emptyListParser, wildCardPatternParser]
+
 namePatternParser = do
   (Ident name) <- identParser
   return $ NamePattern name
 
 listPatternParser = parens $ do
-  hd <- choice [try listPatternParser, pairPatternParser, namePatternParser, emptyListParser, wildCardPatternParser]
+  hd <- choice $ [try listPatternParser, pairPatternParser] ++ nameEmptyWildCard
   symbol ":"
-  tail <- choice [listPatternParser, namePatternParser, emptyListParser, wildCardPatternParser]
+  tail <- choice $ [listPatternParser] ++ nameEmptyWildCard
   return $ ListPattern hd tail
 
 emptyListParser = do
@@ -221,9 +265,9 @@ emptyListParser = do
   return $ EmptyListPattern
 
 pairPatternParser = parens $ do
-  fst <- choice [try listPatternParser, pairPatternParser, namePatternParser, wildCardPatternParser]
+  fst <- choice $ [try listPatternParser, pairPatternParser] ++ nameEmptyWildCard
   symbol ","
-  snd <- choice [try listPatternParser, pairPatternParser, namePatternParser, wildCardPatternParser]
+  snd <- choice $ [try listPatternParser, pairPatternParser] ++ nameEmptyWildCard
   return $ PairPattern (fst, snd)
 -------------------------------
   
@@ -231,7 +275,8 @@ defParser :: Parser Expr
 defParser = do
   space
   (Ident funcN) <- lexeme identParser <?> "function name"
-  params <- many $ choice [try listPatternParser, pairPatternParser, namePatternParser, emptyListParser, wildCardPatternParser]
+  params <- many (choice [try listPatternParser, pairPatternParser
+  						  , namePatternParser, emptyListParser, wildCardPatternParser] <?> "argument")
   symbol "="
   stmt <- exprParser
   return $ Def funcN params stmt
@@ -240,6 +285,10 @@ applicationParser :: Parser Expr
 applicationParser = do
   appFunc <- choice [try $ parens exprParser, identParser]
   param <- many $ choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
+  notFollowedBy (do 
+	eq <- char '=' 
+	notEq <- satisfy (/= '=') 
+	return $ eq : [notEq]) <?> "=="
   return $ foldl App appFunc param
 
 programParser :: Parser [Expr]
@@ -249,4 +298,11 @@ programParser = do
 replParser :: Parser Expr
 replParser = do
   space
-  choice $ try <$> [whereParser, defParser, exprParser]
+  choice [try whereParser, try defParser, exprParser]
+
+treeParser :: String -> IO ()
+treeParser str = do
+	case (parseMaybe replParser str) of
+		Just text -> pPrint text
+		Nothing -> parseTest replParser str
+
