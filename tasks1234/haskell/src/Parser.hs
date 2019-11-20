@@ -115,6 +115,8 @@ postfix = prefixOp Postfix
 -------------------------------
 
 -------------------------------
+listBinOps = symbol <$> ["*", "++", "+", ":", ">", "<", "==", "&&", "||"]
+
 operationsTable :: [[Operator Parser Expr]]
 operationsTable = 	[ [ prefix "-" ] 
 	  				, [ binaryL "*", InfixL (symbol "`div`" >> return (AppBin (Ident "div"))) ]
@@ -162,9 +164,8 @@ listOperationsParser = makeExprParser listOperandsParser operationsTable
 -------------------------------
 
 exprParser :: Parser Expr
-exprParser = space >> choice [ try numOperationsParser
-							 , try logicOperationsParser, try listOperationsParser
-							 , try orderOperationsParser
+exprParser = space >> choice [try logicOperationsParser, try listOperationsParser
+							 , try orderOperationsParser, try numOperationsParser
 							 , ifParser, try $ parens exprParser
 							 , undefinedParser]
 
@@ -217,12 +218,14 @@ wildCardPatternParser = symbol "_" >> return WildCardPattern
 
 nameEmptyWildCard = [namePatternParser, emptyListParser, wildCardPatternParser]
 
+listOfPatterns = [try listPatternParser, pairPatternParser] ++ nameEmptyWildCard
+
 namePatternParser = do
   (Ident name) <- identParser
   return $ NamePattern name
 
 listPatternParser = parens $ do
-  hd <- choice $ [try listPatternParser, pairPatternParser] ++ nameEmptyWildCard
+  hd <- choice listOfPatterns
   symbol ":"
   tail <- choice $ [listPatternParser] ++ nameEmptyWildCard
   return $ ListPattern hd tail
@@ -232,12 +235,11 @@ emptyListParser = do
   return $ EmptyListPattern
 
 pairPatternParser = parens $ do
-  fst <- choice $ [try listPatternParser, pairPatternParser] ++ nameEmptyWildCard
+  fst <- choice listOfPatterns
   symbol ","
-  snd <- choice $ [try listPatternParser, pairPatternParser] ++ nameEmptyWildCard
+  snd <- choice listOfPatterns
   return $ PairPattern (fst, snd)
 -------------------------------
-  
 defParser :: Parser Expr
 defParser = do
   space
@@ -248,15 +250,32 @@ defParser = do
   stmt <- exprParser
   return $ Def funcN params stmt
 
+binOpAsFuncParser :: Parser Expr
+binOpAsFuncParser = do
+	sgn <- parens (choice $ try <$> listBinOps)
+	l <- choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
+	r <- choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
+	return $ AppBin (Ident sgn) l r
+
+partAppBinOpParser :: Parser Expr
+partAppBinOpParser = do
+	(sgn, l) <- parens (do
+		sgn <- choice $ try <$> listBinOps
+		first <- choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
+		return (Ident sgn, first)
+		)
+	r <- choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
+	return $ AppBin sgn l r
+
 applicationParser :: Parser Expr
-applicationParser = do
+applicationParser = choice [try partAppBinOpParser, try binOpAsFuncParser , do
   appFunc <- choice [try $ parens exprParser, identParser]
   param <- many $ choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
   notFollowedBy (do 
 	eq <- char '=' 
 	notEq <- satisfy (/= '=') 
 	return $ eq : [notEq]) <?> "=="
-  return $ foldl App appFunc param
+  return $ foldl App appFunc param]
 
 programParser :: Parser [Expr]
 programParser = do
