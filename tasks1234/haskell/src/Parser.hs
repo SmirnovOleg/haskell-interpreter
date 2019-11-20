@@ -99,20 +99,6 @@ pairParser = parens $ do
   return $ PairExpr (left, right)
 -------------------------------
 
-{-wrapInParens :: Parser String -> Parser String
-wrapInParens parseOp = do
-	op <- parseOp
-	return $ "(" ++ op ++ ")"
-
-numOperations :: [String]
-numOperations = [ "+", "-", "div", "*"]
-				 
-logicOperations :: [String]
-logicOperations = [ "not", "&&", "||"]
-
-listOperations :: [String]
-listOperations = [ ":", "++"]-}
-
 -------------------------------
 makeOpParser f operator name = operator (symbol name >>= \n -> return $ f (Ident name))
 
@@ -162,30 +148,11 @@ listOperandsParser = choice [ try applicationParser, try $ parens logicOperation
 -------------------------------
 
 -------------------------------
-{-operationToApp :: Expr -> Parser Expr
-operationToApp op = do
-	case op of
-		AppBinOp _ _ _ -> binOpToApp op
-		_ -> return op
-
-binOpToApp :: Expr -> Parser Expr
-binOpToApp (AppBinOp op l r) = return $ App (App (Ident $ show op) l) r
-
-unOpToApp :: Expr -> Parser Expr
-unOpToApp (AppUnOp op body) = return $ App (Ident $ show op) body-}
-
 numOperationsParser :: Parser Expr
 numOperationsParser = makeExprParser numOperandsParser operationsTable
 
 logicOperationsParser :: Parser Expr
 logicOperationsParser = makeExprParser logicOperandsParser logicOperationsTable
-
-{-orderOperationsParser :: Parser Expr
-orderOperationsParser = (try $ parens orderOperationsParser) <|> do
-							l <- numOperationsParser
-							sgn <- (Eq <$ symbol "==") <|> (Ls <$ symbol "<") <|> (Gt <$ symbol ">")
-							r <- numOperationsParser
-							return $ AppBinOp sgn l r-}
 
 orderOperationsParser :: Parser Expr
 orderOperationsParser = makeExprParser orderOperandsParser operationsTable
@@ -305,4 +272,3 @@ treeParser str = do
 	case (parseMaybe replParser str) of
 		Just text -> pPrint text
 		Nothing -> parseTest replParser str
-
