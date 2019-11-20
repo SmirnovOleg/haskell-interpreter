@@ -104,16 +104,27 @@ makeOpParser f operator name = operator (symbol name >>= \n -> return $ f (Ident
 
 binaryOp = makeOpParser AppBin
 
+<<<<<<< HEAD
 binaryL = binaryOp InfixL
 binaryN = binaryOp InfixN
 binaryR = binaryOp InfixR
 
 prefixOp = makeOpParser App
+=======
+-------------------------------
+numOperatorsTable :: [[Operator Parser Expr]]
+numOperatorsTable = operatorTableUn ++ operatorTableBin where
+  operatorTableUn  = [ [ (prefix "-" (AppUnOp Neg)) , (prefix "+" id)] ]
+  operatorTableBin = [ [ (binaryL "*" (AppBinOp Mul)) , (binaryL "`div`"(AppBinOp Div)) ]
+                     , [ (binaryL "+" (AppBinOp Add)) , (binaryL "-" (AppBinOp Sub)) ]
+                     ]
+>>>>>>> master
 
 prefix  = prefixOp Prefix
 postfix = prefixOp Postfix
 -------------------------------
 
+<<<<<<< HEAD
 -------------------------------
 operationsTable :: [[Operator Parser Expr]]
 operationsTable = 	[ [ prefix "-" ] 
@@ -128,6 +139,13 @@ logicOperationsTable =  [ [ prefix "not" ]
 						, [ binaryR "&&" ] 
 						, [ binaryR "||" ] 
 						]
+=======
+listOperatorsTable :: [[Operator Parser Expr]]
+listOperatorsTable = [ [ binaryR "++" (AppBinOp Concat), binaryR ":" (AppBinOp Push) ] ]
+
+pairOperatorsTable :: [[Operator Parser Expr]]
+pairOperatorsTable = [ [ prefix "fst" (AppUnOp Fst), prefix "snd" (AppUnOp Snd) ] ]
+>>>>>>> master
 -------------------------------
 
 -------------------------------
@@ -149,7 +167,15 @@ listOperandsParser = choice [ try applicationParser, try $ parens logicOperation
 
 -------------------------------
 numOperationsParser :: Parser Expr
+<<<<<<< HEAD
 numOperationsParser = makeExprParser numOperandsParser operationsTable
+=======
+<<<<<<< HEAD
+numOperationsParser = makeExprParser numOperandsParser numOperationsTable
+=======
+numOperationsParser = makeExprParser termsNumParser numOperatorsTable
+>>>>>>> e0187d8d27c2a0e82f74bdaf28a2d50edc67d342
+>>>>>>> master
 
 logicOperationsParser :: Parser Expr
 logicOperationsParser = makeExprParser logicOperandsParser logicOperationsTable
@@ -158,7 +184,15 @@ orderOperationsParser :: Parser Expr
 orderOperationsParser = makeExprParser orderOperandsParser operationsTable
 
 listOperationsParser :: Parser Expr
+<<<<<<< HEAD
 listOperationsParser = makeExprParser listOperandsParser operationsTable
+=======
+<<<<<<< HEAD
+listOperationsParser = makeExprParser listOperandsParser listOperationsTable
+=======
+listOperationsParser = makeExprParser termsListParser listOperatorsTable
+>>>>>>> e0187d8d27c2a0e82f74bdaf28a2d50edc67d342
+>>>>>>> master
 -------------------------------
 
 exprParser :: Parser Expr

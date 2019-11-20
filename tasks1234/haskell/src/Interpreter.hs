@@ -24,11 +24,6 @@ eval env (PairExpr (x,y)) = (env, result) where
         p2 <- snd $ eval env y
         return $ PairExpr (p1, p2)
 
-eval env (Ident name) = (env, result) where
-    result = do
-        lambda <- getByName env name
-        snd $ eval env lambda
-
 eval env (IfThenElse predicate a b) = (env, result) where
     result = do
         condition <- snd $ eval env predicate
@@ -86,6 +81,11 @@ eval env (AppUnOp op x) = (env, result) where
             calc Snd (PairExpr (_, p2)) = return $ p2
             calc Snd _  = Left $ TypeError "Pair in snd operation expected"
 
+eval env (Ident name) = (env, result) where
+    result = do
+        lambda <- getByName env name
+        snd $ eval env lambda
+
 eval env (App func arg) = (env, result) where
     result = do
         lambda <- snd $ eval env func
@@ -103,17 +103,19 @@ eval env lambda@(Lambda patterns body closure) = (env, result) where
         else
             return lambda
 
-eval env (Where body definitions) = (env, result) where
-    result = snd $ eval nenv body
-    nenv = fst $ evalList env definitions
+eval env (Where (Def func patterns body) helpers) = (nenv, return None) where
+    nenv = setByName env func lambda
+    lambda = Lambda patterns body (Map.union whereEnv nenv)
+    whereEnv = fst $ evalMany env helpers
 
 
-evalList :: Env -> [Expr] -> (Env, Safe Expr)
-evalList env [] = (env, return None)
-evalList env (x:xs) = (nenv, xsResult) where
-    xEnv = fst $ eval env x
-    (xsEnv, xsResult) = evalList xEnv xs
-    nenv = Map.union xsEnv xEnv
+evalMany :: Env -> [Expr] -> (Env, Safe Expr)
+evalMany env [] = (env, return None)
+evalMany env (current@(Def func patterns body):other) = (nenv, return None) where
+    currentEnv = setByName env func currentLambda
+    currentLambda = Lambda patterns body nenv
+    othersEnv = fst $ evalMany currentEnv other
+    nenv = Map.union currentEnv othersEnv
 
 
 substitute :: Env -> Expr -> Expr -> Safe Expr
