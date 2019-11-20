@@ -108,8 +108,8 @@ postfix = makeOpParser Postfix
 -------------------------------
 
 -------------------------------
-numOperationsTable :: [[Operator Parser Expr]]
-numOperationsTable = operatorTableUn ++ operatorTableBin where
+numOperatorsTable :: [[Operator Parser Expr]]
+numOperatorsTable = operatorTableUn ++ operatorTableBin where
   operatorTableUn  = [ [ (prefix "-" (AppUnOp Neg)) , (prefix "+" id)] ]
   operatorTableBin = [ [ (binaryL "*" (AppBinOp Mul)) , (binaryL "`div`"(AppBinOp Div)) ]
                      , [ (binaryL "+" (AppBinOp Add)) , (binaryL "-" (AppBinOp Sub)) ]
@@ -121,9 +121,11 @@ logicOperatorsTable = [ [ prefix "not" (AppUnOp Not) ]
                       , [ binaryR "||" (AppBinOp Or) ]
                       ]
 
-listOperationsTable :: [[Operator Parser Expr]]
-listOperationsTable = [ [prefix "fst" (AppUnOp Fst), prefix "snd" (AppUnOp Snd)]
-                 , [ binaryL "++" (AppBinOp Concat), binaryR ":" (AppBinOp Push)]]
+listOperatorsTable :: [[Operator Parser Expr]]
+listOperatorsTable = [ [ binaryR "++" (AppBinOp Concat), binaryR ":" (AppBinOp Push) ] ]
+
+pairOperatorsTable :: [[Operator Parser Expr]]
+pairOperatorsTable = [ [ prefix "fst" (AppUnOp Fst), prefix "snd" (AppUnOp Snd) ] ]
 -------------------------------
 
 -------------------------------
@@ -141,7 +143,11 @@ listOperandsParser = choice [applicationParser, try $ parens logicOperationsPars
 
 -------------------------------
 numOperationsParser :: Parser Expr
+<<<<<<< HEAD
 numOperationsParser = makeExprParser numOperandsParser numOperationsTable
+=======
+numOperationsParser = makeExprParser termsNumParser numOperatorsTable
+>>>>>>> e0187d8d27c2a0e82f74bdaf28a2d50edc67d342
 
 logicOperationsParser :: Parser Expr
 logicOperationsParser = (makeExprParser logicOperandsParser logicOperatorsTable) <?> "logic operation"
@@ -154,7 +160,11 @@ orderOperationsParser = (try $ parens orderOperationsParser) <|> do
 							return $ AppBinOp sgn l r
 
 listOperationsParser :: Parser Expr
+<<<<<<< HEAD
 listOperationsParser = makeExprParser listOperandsParser listOperationsTable
+=======
+listOperationsParser = makeExprParser termsListParser listOperatorsTable
+>>>>>>> e0187d8d27c2a0e82f74bdaf28a2d50edc67d342
 -------------------------------
 
 exprParser :: Parser Expr
