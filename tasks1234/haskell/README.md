@@ -22,6 +22,7 @@ Implemented features:
 TODO
 - Parser
     - Test lambdas application -- ((f 2) 3)
+    - (+ a) b 
     - Testing!
     - Types and type-definitions
 - Interpreter

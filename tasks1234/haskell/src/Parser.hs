@@ -14,6 +14,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Pretty.Simple 
 import AST
 import Tests
+import Data.Function ((&))
 
 type Text = String
 
@@ -164,7 +165,7 @@ listOperationsParser = makeExprParser listOperandsParser operationsTable
 -------------------------------
 
 exprParser :: Parser Expr
-exprParser = space >> choice [try logicOperationsParser, try listOperationsParser
+exprParser = space >> choice [ try logicOperationsParser, try listOperationsParser
 							 , try orderOperationsParser, try numOperationsParser
 							 , ifParser, try $ parens exprParser
 							 , undefinedParser]
@@ -218,14 +219,14 @@ wildCardPatternParser = symbol "_" >> return WildCardPattern
 
 nameEmptyWildCard = [namePatternParser, emptyListParser, wildCardPatternParser]
 
-listOfPatterns = [try listPatternParser, pairPatternParser] ++ nameEmptyWildCard
+setOfPatterns = [try listPatternParser, pairPatternParser] ++ nameEmptyWildCard
 
 namePatternParser = do
   (Ident name) <- identParser
   return $ NamePattern name
 
 listPatternParser = parens $ do
-  hd <- choice listOfPatterns
+  hd <- choice setOfPatterns
   symbol ":"
   tail <- choice $ [listPatternParser] ++ nameEmptyWildCard
   return $ ListPattern hd tail
@@ -235,20 +236,35 @@ emptyListParser = do
   return $ EmptyListPattern
 
 pairPatternParser = parens $ do
-  fst <- choice listOfPatterns
+  fst <- choice setOfPatterns
   symbol ","
-  snd <- choice listOfPatterns
+  snd <- choice setOfPatterns
   return $ PairPattern (fst, snd)
+
+patternsParser :: Parser Pattern
+patternsParser = choice [try listPatternParser, pairPatternParser
+						, namePatternParser, emptyListParser, wildCardPatternParser] <?> "argument"
 -------------------------------
 defParser :: Parser Expr
 defParser = do
   space
   (Ident funcN) <- lexeme identParser <?> "function name"
-  params <- many (choice [try listPatternParser, pairPatternParser
-  						  , namePatternParser, emptyListParser, wildCardPatternParser] <?> "argument")
+  params <- many patternsParser
   symbol "="
-  stmt <- exprParser
+  stmt <- exprParser <|> lambdaParser
   return $ Def funcN params stmt
+
+
+lambdaParser :: Parser Expr
+lambdaParser = do
+	symbol "\\"
+	identsH <- some patternsParser <?> "at least one arguement"
+	string "->"
+	(UserLambda identsT body) <- try (space1 >> lambdaParser) <|> do
+		space
+		body <- exprParser
+		return $ UserLambda [] body
+	return $ UserLambda (identsH ++ identsT) body
 
 binOpAsFuncParser :: Parser Expr
 binOpAsFuncParser = do
@@ -267,15 +283,26 @@ partAppBinOpParser = do
 	r <- choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
 	return $ AppBin sgn l r
 
+lambdaApplicationParser :: Parser Expr
+lambdaApplicationParser = do
+	lambda@(UserLambda idents body) <- parens lambdaParser <?> "lambda application should be in parens"
+	args <- many appArgs
+	if ((idents & length) > (args & length))
+		then fail "not enough arguments for lambda function"
+		else return $ foldl App lambda args
+
 applicationParser :: Parser Expr
-applicationParser = choice [try partAppBinOpParser, try binOpAsFuncParser , do
+applicationParser = choice [try partAppBinOpParser, try binOpAsFuncParser, try lambdaApplicationParser, do
   appFunc <- choice [try $ parens exprParser, identParser]
-  param <- many $ choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
+  args <- many $ choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
   notFollowedBy (do 
 	eq <- char '=' 
 	notEq <- satisfy (/= '=') 
 	return $ eq : [notEq]) <?> "=="
-  return $ foldl App appFunc param]
+  return $ foldl App appFunc args]
+
+appArgs :: Parser Expr
+appArgs = choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
 
 programParser :: Parser [Expr]
 programParser = do
