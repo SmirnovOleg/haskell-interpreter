@@ -293,13 +293,14 @@ lambdaApplicationParser = do
 
 applicationParser :: Parser Expr
 applicationParser = choice [try partAppBinOpParser, try binOpAsFuncParser, try lambdaApplicationParser, do
-  appFunc <- choice [try $ parens exprParser, identParser]
-  args <- many $ choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
-  notFollowedBy (do 
-	eq <- char '=' 
-	notEq <- satisfy (/= '=') 
-	return $ eq : [notEq]) <?> "=="
-  return $ foldl App appFunc args]
+	appFunc <- choice [try $ parens exprParser, identParser]
+	args <- many $ choice [try $ parens exprParser, try $ parens lambdaParser, identParser
+							, literalParser, listParser, pairParser, undefinedParser]
+	notFollowedBy (do -- to be sure it is not declaration of the function
+		eq <- char '=' 
+		notEq <- satisfy (/= '=') 
+		return $ eq : [notEq]) <?> "=="
+	return $ foldl App appFunc args]
 
 appArgs :: Parser Expr
 appArgs = choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
