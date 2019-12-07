@@ -2,15 +2,14 @@ module AST where
 
 import qualified Data.Map as Map
 
-
 type Name = String
 
 data Type = HInt
-		  | HBool
-		  | HChar
-		  | HList Type
-		  | HPair Type Type
-		  | HLambda Type Type
+          | HBool
+	  | HChar
+	  | HList Type
+	  | HPair Type Type
+	  | HLambda Type Type
         deriving (Show, Ord, Eq, Read) 
 
 data Pattern = NamePattern  Name
@@ -20,9 +19,9 @@ data Pattern = NamePattern  Name
              | PairPattern  (Pattern, Pattern)
         deriving (Show, Ord, Eq, Read)
 
-data BinOp = Add | Sub | Mul | Div | 
-			 And | Or | Eq | Gt | Ls |
-			 Concat | Push
+data BinOp = Add | Sub | Mul | Div 
+           | And | Or | Eq | Gt | Ls 
+           | Concat | Push
 			 
         deriving (Show, Ord, Eq, Read)
 
@@ -40,7 +39,7 @@ data Expr = Ident          Name
           | Where          Expr [Expr]
 
           | Lambda         [Pattern] Expr Env
-		  | UserLambda	   [Pattern] Expr
+          | UserLambda	   [Pattern] Expr
 
           | IntLiteral     Int
           | CharLiteral    Char
@@ -49,11 +48,11 @@ data Expr = Ident          Name
           | ListExpr       [Expr]
           | PairExpr       (Expr, Expr)
 
-		  | None
-		  | Undefined
+	  | None
+	  | Undefined
 
           | TypeDef        Name [Type]
-		deriving (Show, Ord, Eq, Read)
+	deriving (Show, Ord, Eq, Read)
 
 prettyPrint :: Expr -> String
 prettyPrint (IntLiteral x) = show x
@@ -72,10 +71,10 @@ data HaskellError = BaseError String
                   | NotInScope Name
                   | WrongNumberOfArguments
                   | TypeError String
-				  | ParseError
-				  | UndefinedError
-				  | WrongArgument
-        deriving (Show, Ord, Eq, Read)
+		  | ParseError
+		  | UndefinedError
+		  | WrongArgument
+                deriving (Show, Ord, Eq, Read)
 
 type Safe = Either HaskellError
 type Env = Map.Map Name (Safe Expr)
