@@ -6,14 +6,13 @@ module Parser where
 
 import Control.Monad (void)
 import Control.Monad.Combinators.Expr
-import Data.Text (Text)
+import Data.Text (Text, unpack)
 import Data.Void
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Pretty.Simple 
 import AST
-import Tests
 import Data.Function ((&))
 
 type Text = String
@@ -316,6 +315,6 @@ replParser = do
 
 treeParser :: String -> IO ()
 treeParser str = do
-	case (parseMaybe replParser str) of
-		Just text -> pPrint text
-		Nothing -> parseTest replParser str
+	case (runParser replParser "" str) of
+		Right text -> pPrint text
+		Left error -> putStrLn $ show error --parseTest replParser str

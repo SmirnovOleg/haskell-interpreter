@@ -1,6 +1,6 @@
 module Main where
 
---import REPL
+import REPL
 
 main :: IO ()
-main = putStrLn "Hello, world"----runRepl runtime
+main = runRepl runtime
