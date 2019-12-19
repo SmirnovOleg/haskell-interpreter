@@ -37,9 +37,8 @@ parens = between (symbol "(") (symbol ")")
 -------------------------------
 
 -------------------------------
-keywords =  [
-             "True", "False"
-        	, "where"
+keywords =  ["True", "False"
+            , "where"
             , "let", "in"
             , "do"
             , "if", "then", "else"
@@ -49,9 +48,9 @@ keywords =  [
 -------------------------------
 
 -------------------------------
-undefinedParser :: Parser Expr
-undefinedParser = do
-  lexeme $ string "undefined"
+undefinedExprParser :: Parser Expr
+undefinedExprParser = do
+  lexeme $ string "Undefined"
   return Undefined
 
 boolParser :: Parser Expr
@@ -79,11 +78,11 @@ literalParser = choice [numberParser, charParser, stringParser, boolParser]
 
 identParser :: Parser Expr
 identParser = (lexeme . try) $ do
-  hd <- lowerChar
-  tl <- many $ choice [alphaNumChar, char '_', char '\'']
-  let word = hd : tl
+  head <- lowerChar
+  tail <- many $ choice [alphaNumChar, char '_', char '\'']
+  let word = head : tail
   if (word `elem` keywords)
-     then fail $ "name " ++ word ++ " is keyword"
+     then fail $ "Name " ++ word ++ " is keyword"
      else return $ Ident word
 
 listParser :: Parser Expr
@@ -100,7 +99,8 @@ pairParser = parens $ do
 -------------------------------
 
 -------------------------------
-makeOpParser f operator name = operator (symbol name >>= \n -> return $ f (Ident name))
+makeOpParser application operator name = 
+	operator (symbol name >>= \n -> return $ application (Ident n))
 
 binaryOp = makeOpParser AppBin
 
@@ -134,17 +134,23 @@ logicOperationsTable =  [ [ prefix "not" ]
 
 -------------------------------
 numOperandsParser :: Parser Expr
-numOperandsParser = choice  [ try applicationParser, try $ parens numOperationsParser
+numOperandsParser = choice  [ try applicationParser
+							, try $ parens numOperationsParser
 							, numberParser]
 
 logicOperandsParser :: Parser Expr
-logicOperandsParser = choice [try $ parens logicOperationsParser, boolParser, orderOperationsParser]
+logicOperandsParser = choice [ try $ parens logicOperationsParser
+							 , boolParser
+							 , orderOperationsParser]
 
 orderOperandsParser :: Parser Expr
-orderOperandsParser = parens numOperationsParser <|> numOperationsParser
+orderOperandsParser = choice [ parens numOperationsParser
+							 , numOperationsParser]
 
 listOperandsParser :: Parser Expr
-listOperandsParser = choice [ try applicationParser, try $ parens logicOperationsParser, try $ parens numOperationsParser
+listOperandsParser = choice [ try applicationParser
+							, try $ parens logicOperationsParser
+							, try $ parens numOperationsParser
 						 	, parens listOperationsParser, pairParser, literalParser
 						 	, listParser]
 -------------------------------
@@ -164,21 +170,25 @@ listOperationsParser = makeExprParser listOperandsParser operationsTable
 -------------------------------
 
 exprParser :: Parser Expr
-exprParser = space >> choice [ try logicOperationsParser, try listOperationsParser
-							 , try orderOperationsParser, try numOperationsParser
-							 , ifParser, try $ parens exprParser
-							 , undefinedParser]
+exprParser = space >> choice [ try logicOperationsParser
+							 , try listOperationsParser
+							 , try orderOperationsParser
+							 , try numOperationsParser
+							 , ifParser
+							 , try $ parens exprParser
+							 , undefinedExprParser]
 
 ifParser :: Parser Expr
 ifParser = do
-  lexeme $ string "if"
-  cond <- (lexeme $ choice  [ try logicOperationsParser
-  							, try applicationParser, identParser]) <?> "logic operation/operand"
-  lexeme $ string "then"
-  then' <- choice [parens exprParser, exprParser]
-  lexeme $ string "else"
-  else' <- choice [parens exprParser, exprParser]
-  return $ IfThenElse cond then' else' 
+	lexeme $ string "if"
+	cond <- (lexeme $ choice  [ try logicOperationsParser
+								, try applicationParser
+								, identParser]) <?> "logic operation/operand"
+	lexeme $ string "then"
+	then' <- choice [parens exprParser, exprParser]
+	lexeme $ string "else"
+	else' <- choice [parens exprParser, exprParser]
+	return $ IfThenElse cond then' else' 
 
 -------------------------------
 inlineWhereBlockParser :: Parser [Expr]
@@ -191,68 +201,68 @@ inlineWhereBlockParser = do
 newLineWhereBlockParser :: Parser [Expr]
 newLineWhereBlockParser = choice [
 	try $ do
-	  lexeme $ string "where" 
-	  newline 
-	  tabs <- some tab
-	  defs <- sepEndBy1 defParser (eol >> string tabs)
-	  return defs
-  , do 
-	  newline
-	  spaceW <- some tab
-	  lexeme $ string "where" 
-	  newline
-	  tabs <- (string spaceW >> some tab)
-	  defs <- sepEndBy1 defParser (eol >> string tabs)
-	  return defs
-	   ]
+		lexeme $ string "where" 
+		newline 
+		tabs <- some tab
+		defs <- sepEndBy1 defParser (eol >> string tabs)
+		return defs
+  	, do 
+		newline
+		spaceW <- some tab
+		lexeme $ string "where" 
+		newline
+		tabs <- (string spaceW >> some tab)
+		defs <- sepEndBy1 defParser (eol >> string tabs)
+		return defs
+	]
 
 whereParser :: Parser Expr
 whereParser = do 
-  stmt <- defParser
-  defs <- newLineWhereBlockParser <|> inlineWhereBlockParser
-  return $ Where stmt defs
+	stmt <- defParser
+	defs <- newLineWhereBlockParser <|> inlineWhereBlockParser
+	return $ Where stmt defs
 -------------------------------
 
 -------------------------------
 wildCardPatternParser = symbol "_" >> return WildCardPattern
 
-nameEmptyWildCard = [namePatternParser, emptyListParser, wildCardPatternParser]
+atomicPatterns = [namePatternParser, emptyListParser, wildCardPatternParser]
 
-setOfPatterns = [try listPatternParser, pairPatternParser] ++ nameEmptyWildCard
+allPatterns = [try listPatternParser, pairPatternParser] ++ atomicPatterns
 
 namePatternParser = do
-  (Ident name) <- identParser
-  return $ NamePattern name
+	(Ident name) <- identParser
+	return $ NamePattern name
 
 listPatternParser = parens $ do
-  hd <- choice setOfPatterns
-  symbol ":"
-  tail <- choice $ [listPatternParser] ++ nameEmptyWildCard
-  return $ ListPattern hd tail
+	hd <- choice allPatterns
+	symbol ":"
+	tail <- choice $ [listPatternParser] ++ atomicPatterns
+	return $ ListPattern hd tail
 
 emptyListParser = do
-  between (symbol "[") (symbol "]") space
-  return $ EmptyListPattern
+	between (symbol "[") (symbol "]") space
+	return $ EmptyListPattern
 
 pairPatternParser = parens $ do
-  fst <- choice setOfPatterns
-  symbol ","
-  snd <- choice setOfPatterns
-  return $ PairPattern (fst, snd)
+	fst <- choice allPatterns
+	symbol ","
+	snd <- choice allPatterns
+	return $ PairPattern (fst, snd)
 
 patternsParser :: Parser Pattern
-patternsParser = choice [try listPatternParser, pairPatternParser
-						, namePatternParser, emptyListParser, wildCardPatternParser] <?> "argument"
+patternsParser = choice allPatterns <?> "argument"
+
 -------------------------------
+
 defParser :: Parser Expr
 defParser = do
-  space
-  (Ident funcN) <- lexeme identParser <?> "function name"
-  params <- many patternsParser
-  symbol "="
-  stmt <- exprParser <|> lambdaParser
-  return $ Def funcN params stmt
-
+	space
+	(Ident funcN) <- lexeme identParser <?> "function name"
+	params <- many patternsParser
+	symbol "="
+	expr <- exprParser <|> lambdaParser
+	return $ Def funcN params expr
 
 lambdaParser :: Parser Expr
 lambdaParser = do
@@ -268,19 +278,19 @@ lambdaParser = do
 binOpAsFuncParser :: Parser Expr
 binOpAsFuncParser = do
 	sgn <- parens (choice $ try <$> listBinOps)
-	l <- choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
-	r <- choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
-	return $ AppBin (Ident sgn) l r
+	l <- choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedExprParser]
+	r <- choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedExprParser]
+	return $ App (App (Ident sgn) l) r
 
 partAppBinOpParser :: Parser Expr
 partAppBinOpParser = do
 	(sgn, l) <- parens (do
 		sgn <- choice $ try <$> listBinOps
-		first <- choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
-		return (Ident sgn, first)
+		first <- choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedExprParser]
+		return (sgn, first)
 		)
-	r <- choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
-	return $ AppBin sgn l r
+	r <- choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedExprParser]
+	return $ App (App (Ident sgn) l) r
 
 lambdaApplicationParser :: Parser Expr
 lambdaApplicationParser = do
@@ -291,18 +301,32 @@ lambdaApplicationParser = do
 		else return $ foldl App lambda args
 
 applicationParser :: Parser Expr
-applicationParser = choice [try partAppBinOpParser, try binOpAsFuncParser, try lambdaApplicationParser, do
-	appFunc <- choice [try $ parens exprParser, identParser]
-	args <- many $ choice [try $ parens exprParser, try $ parens lambdaParser, identParser
-							, literalParser, listParser, pairParser, undefinedParser]
-	notFollowedBy (do -- to be sure it is not declaration of the function
-		eq <- char '=' 
-		notEq <- satisfy (/= '=') 
-		return $ eq : [notEq]) <?> "=="
-	return $ foldl App appFunc args]
+applicationParser = 
+	choice [ try partAppBinOpParser
+		   , try binOpAsFuncParser
+		   , try lambdaApplicationParser
+		   , do
+				appFunc <- choice [try $ parens exprParser, identParser]
+				args <- many $ choice [ try $ parens exprParser
+									  , try $ parens lambdaParser
+									  , identParser
+									  , literalParser
+									  , listParser
+									  , pairParser
+									  , undefinedExprParser]
+				notFollowedBy (do -- to be sure it is not declaration of the function
+					eq <- char '=' 
+					notEq <- satisfy (/= '=') 
+					return $ eq : [notEq]) <?> "=="
+				return $ foldl App appFunc args]
 
 appArgs :: Parser Expr
-appArgs = choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedParser]
+appArgs = choice [ parens exprParser
+				 , identParser
+				 , literalParser
+				 , listParser
+				 , pairParser
+				 , undefinedExprParser]
 
 programParser :: Parser [Expr]
 programParser = do

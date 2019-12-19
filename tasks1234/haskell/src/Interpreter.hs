@@ -6,13 +6,12 @@ import qualified Data.List as List
 
 
 eval :: Env -> Expr -> (Env, Safe Expr)
-
 eval env int@(IntLiteral _) = (env, return int)
 eval env bool@(BoolLiteral _) = (env, return bool)
 eval env char@(CharLiteral _) = (env, return char)
 eval env (StringLiteral str) = eval env (ListExpr $ map (\c -> CharLiteral c) str)
 
-eval env (Undefined) = (env, (Left UndefinedError))
+eval env (Undefined) = (env, (Left UndefinedNameError))
 eval env (None) = (env, return None)
 
 eval env (ListExpr list) = (env, result) where

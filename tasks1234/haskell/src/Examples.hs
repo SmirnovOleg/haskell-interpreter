@@ -22,4 +22,4 @@ fact =
 main :: IO ()
 main = do
       treeParser (unpack fib)
-      treeParser (unpack fact)      
+      treeParser (unpack fact)

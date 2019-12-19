@@ -3,7 +3,7 @@
 
 Description:
 - AST implemented
-- Initial parser/interpreter/REPL implemented; waiting for code review
+- Initial parser/interpreter/REPL implemented
 - Run via `make && make test`
 
 
@@ -13,10 +13,10 @@ Implemented features:
 - Initial binary & unary operators
 - Functions
     - Call-by-name evaluation strategy
-    - Works on lambdas
+    - Based on lambda calculus
     - Pointless style 
     - Partial application
-- `if-then-else` statements
+- `if-then-else` expressions
 
 
 TODO
