@@ -102,7 +102,9 @@ pairParser = parens $ do
 makeOpParser application operator name = 
 	operator (symbol name >>= \n -> return $ application (Ident n))
 
-binaryOp = makeOpParser AppBin
+binApplication = \op -> \x y -> App (App op x) y
+
+binaryOp = makeOpParser binApplication
 
 binaryL = binaryOp InfixL
 binaryN = binaryOp InfixN
@@ -119,7 +121,7 @@ listBinOps = symbol <$> ["*", "++", "+", ":", ">", "<", "==", "&&", "||"]
 
 operationsTable :: [[Operator Parser Expr]]
 operationsTable = 	[ [ prefix "-" ] 
-	  				, [ binaryL "*", InfixL (symbol "`div`" >> return (AppBin (Ident "div"))) ]
+	  				, [ binaryL "*", InfixL (symbol "`div`" >> return (binApplication (Ident "div"))) ]
 					, [ binaryL "+", binaryL "-" ]
 					, [ binaryL "++", binaryR ":" ]
 					, [ binaryN ">", binaryN "<", binaryN "==" ]
@@ -139,19 +141,23 @@ numOperandsParser = choice  [ try applicationParser
 							, numberParser]
 
 logicOperandsParser :: Parser Expr
-logicOperandsParser = choice [ try $ parens logicOperationsParser
+logicOperandsParser = choice [ try applicationParser
+							 , try $ parens logicOperationsParser
 							 , boolParser
 							 , orderOperationsParser]
 
 orderOperandsParser :: Parser Expr
-orderOperandsParser = choice [ parens numOperationsParser
+orderOperandsParser = choice [ try applicationParser
+							 , parens numOperationsParser
 							 , numOperationsParser]
 
 listOperandsParser :: Parser Expr
 listOperandsParser = choice [ try applicationParser
 							, try $ parens logicOperationsParser
 							, try $ parens numOperationsParser
-						 	, parens listOperationsParser, pairParser, literalParser
+							, parens listOperationsParser
+							, pairParser
+							, literalParser
 						 	, listParser]
 -------------------------------
 
@@ -174,6 +180,7 @@ exprParser = space >> choice [ try logicOperationsParser
 							 , try listOperationsParser
 							 , try orderOperationsParser
 							 , try numOperationsParser
+							 , applicationParser
 							 , ifParser
 							 , try $ parens exprParser
 							 , undefinedExprParser]
@@ -285,7 +292,7 @@ binOpAsFuncParser = do
 partAppBinOpParser :: Parser Expr
 partAppBinOpParser = do
 	(sgn, l) <- parens (do
-		sgn <- choice $ try <$> listBinOps
+		sgn <- choice ( ((try <$> listBinOps)) ++ (try <$> parens <$> listBinOps))
 		first <- choice [parens exprParser, identParser, literalParser, listParser, pairParser, undefinedExprParser]
 		return (sgn, first)
 		)

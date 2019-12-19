@@ -31,7 +31,7 @@ eval env (IfThenElse predicate a b) = (env, result) where
         else
             snd $ eval env b
 
-eval env (AppBinOp op l r) = (env, result) where
+{--eval env (AppBinOp op l r) = (env, result) where
     result = do
         l <- snd $ eval env l
         r <- snd $ eval env r
@@ -79,6 +79,7 @@ eval env (AppUnOp op x) = (env, result) where
             calc Fst _  = Left $ TypeError "Pair in fst operation expected"
             calc Snd (PairExpr (_, p2)) = return $ p2
             calc Snd _  = Left $ TypeError "Pair in snd operation expected"
+--}
 
 eval env (Ident name) = (env, result) where
     result = do
