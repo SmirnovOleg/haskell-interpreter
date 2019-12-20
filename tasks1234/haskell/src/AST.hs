@@ -24,12 +24,15 @@ data BinOp = Add | Sub | Mul | Div
            | Concat | Push
         deriving (Show, Ord, Eq, Read)
 
-data UnOp = Neg | Not | Fst | Snd
+data UnOp = Neg | Not | Fst | Snd | Head | Tail
         deriving (Show, Ord, Eq, Read)
 
 data Expr = Ident          Name
           | App            Expr Expr
           | Def            Name [Pattern] Expr 
+
+          | AppBinOp       Expr BinOp Expr
+          | AppUnOp        UnOp Expr
 
           | IfThenElse     Expr Expr Expr
           | Where          Expr [Expr]

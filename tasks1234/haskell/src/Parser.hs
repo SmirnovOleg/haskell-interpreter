@@ -7,6 +7,7 @@ module Parser where
 import Control.Monad (void)
 import Control.Monad.Combinators.Expr
 import Data.Text (Text, unpack)
+import qualified Data.Map as Map
 import Data.Void
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -117,7 +118,7 @@ postfix = prefixOp Postfix
 -------------------------------
 
 -------------------------------
-listBinOps = symbol <$> ["*", "++", "+", ":", ">", "<", "==", "&&", "||"]
+listBinOps = symbol <$> ["*", "++", "+", "-", ":", ">", "<", "==", "&&", "||"]
 
 operationsTable :: [[Operator Parser Expr]]
 operationsTable = 	[ [ prefix "-" ] 
@@ -274,13 +275,13 @@ defParser = do
 lambdaParser :: Parser Expr
 lambdaParser = do
 	symbol "\\"
-	identsH <- some patternsParser <?> "at least one arguement"
+	identsH <- some patternsParser <?> "at least one argument"
 	string "->"
-	(UserLambda identsT body) <- try (space1 >> lambdaParser) <|> do
+	(Lambda identsT body _) <- try (space1 >> lambdaParser) <|> do
 		space
 		body <- exprParser
-		return $ UserLambda [] body
-	return $ UserLambda (identsH ++ identsT) body
+		return $ Lambda [] body Map.empty
+	return $ Lambda (identsH ++ identsT) body Map.empty
 
 binOpAsFuncParser :: Parser Expr
 binOpAsFuncParser = do
@@ -301,7 +302,7 @@ partAppBinOpParser = do
 
 lambdaApplicationParser :: Parser Expr
 lambdaApplicationParser = do
-	lambda@(UserLambda idents body) <- parens lambdaParser <?> "lambda application should be in parens"
+	lambda@(Lambda idents body _) <- parens lambdaParser <?> "lambda application should be in parens"
 	args <- many appArgs
 	if ((idents & length) > (args & length))
 		then fail "not enough arguments for lambda function"

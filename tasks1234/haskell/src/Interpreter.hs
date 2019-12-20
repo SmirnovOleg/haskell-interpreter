@@ -31,7 +31,7 @@ eval env (IfThenElse predicate a b) = (env, result) where
         else
             snd $ eval env b
 
-{--eval env (AppBinOp op l r) = (env, result) where
+eval env (AppBinOp l op r) = (env, result) where
     result = do
         l <- snd $ eval env l
         r <- snd $ eval env r
@@ -43,7 +43,7 @@ eval env (IfThenElse predicate a b) = (env, result) where
             calc (IntLiteral a) Mul (IntLiteral b) = return $ IntLiteral (a * b)
             calc _ Mul _  = Left $ TypeError "Int in * operator expected"
             calc (IntLiteral a) Div (IntLiteral b) = return $ IntLiteral (a `div` b)
-            calc _ Div _  = Left $ TypeError "Int in / operator expected"
+            calc _ Div _  = Left $ TypeError "Int in `div` operator expected"
             
             calc (BoolLiteral a) And (BoolLiteral b) = return $ BoolLiteral (a && b)
             calc _ And _  = Left $ TypeError "Bool in && operator expected"
@@ -76,10 +76,14 @@ eval env (AppUnOp op x) = (env, result) where
             calc Not _  = Left $ TypeError "Bool in not operator expected"
 
             calc Fst (PairExpr (p1, _)) = return $ p1
-            calc Fst _  = Left $ TypeError "Pair in fst operation expected"
+            calc Fst _  = Left $ TypeError "Pair in `fst` function expected"
             calc Snd (PairExpr (_, p2)) = return $ p2
-            calc Snd _  = Left $ TypeError "Pair in snd operation expected"
---}
+            calc Snd _  = Left $ TypeError "Pair in `snd` function expected"
+            
+            calc Head (ListExpr (head:tail)) = return $ head
+            calc Head _  = Left $ TypeError "List in `head` function expected"
+            calc Tail (ListExpr (head:tail)) = return $ ListExpr tail
+            calc Tail _  = Left $ TypeError "List in `tail` function expected"
 
 eval env (Ident name) = (env, result) where
     result = do
