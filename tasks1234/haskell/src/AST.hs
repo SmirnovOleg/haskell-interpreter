@@ -2,6 +2,7 @@ module AST where
 
 import qualified Data.Map as Map
 
+
 type Name = String
 
 data Type = HInt

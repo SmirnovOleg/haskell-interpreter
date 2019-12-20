@@ -14,7 +14,9 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Pretty.Simple 
 import AST
+import Runtime (runtime)
 import Data.Function ((&))
+
 
 type Text = String
 
@@ -240,8 +242,8 @@ lambdaParser = do
 	(Lambda identsT body _) <- try (space1 >> lambdaParser) <|> do
 		space
 		body <- exprParser
-		return $ Lambda [] body Map.empty
-	return $ Lambda (identsH ++ identsT) body Map.empty
+		return $ Lambda [] body runtime
+	return $ Lambda (identsH ++ identsT) body runtime
 
 applicationParser :: Parser Expr
 applicationParser = do

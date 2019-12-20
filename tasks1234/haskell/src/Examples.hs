@@ -6,7 +6,8 @@ import NeatInterpolation (text)
 import Data.Text
 import Parser
 import Text.Megaparsec     
-            
+
+
 fib =
     [text|
       fibonacci n = if (n == 1) then 1 else fibonacci (n-1) + fibonacci (n-2)
