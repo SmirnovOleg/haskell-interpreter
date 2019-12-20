@@ -38,7 +38,6 @@ data Expr = Ident          Name
           | Where          Expr [Expr]
 
           | Lambda         [Pattern] Expr Env
-          | UserLambda     [Pattern] Expr
 
           | IntLiteral     Int
           | CharLiteral    Char
