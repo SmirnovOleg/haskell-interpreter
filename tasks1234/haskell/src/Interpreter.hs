@@ -27,8 +27,9 @@ eval env (IfThenElse predicate a b) = (env, result) where
         condition <- snd $ eval env predicate
         if condition == (BoolLiteral True) then 
             snd $ eval env a
-        else
+        else if condition == (BoolLiteral False) then
             snd $ eval env b
+        else Left $ TypeError "Boolean condition in `if` expected"
 
 eval env (AppBinOp l op r) = (env, result) where
     result = do
@@ -83,15 +84,14 @@ eval env (AppUnOp op x) = (env, result) where
             calc Tail _  = Left $ TypeError "List in `tail` function expected"
 
 eval env (Ident name) = (env, result) where
-    result = do
-        lambda <- getByName env name
+    result = do 
+        lambda <- head $ getByName env name
         snd $ eval env lambda
 
-eval env (App func arg) = (env, result) where
+eval env application@(App func arg) = (env, result) where
     result = do
-        lambda <- snd $ eval env func
-        newLambda <- substitute env lambda arg
-        snd $ eval env newLambda
+        lambda <- head $ evalApp env application
+        snd $ eval env lambda
 
 eval env (Def func patterns body) = (nenv, return None) where
     nenv = setByName env func lambda
@@ -110,36 +110,54 @@ eval env (Where (Def func patterns body) helpers) = (nenv, return None) where
     whereEnv = fst $ evalMany env helpers
 
 
-evalMany :: Env -> [Expr] -> (Env, Safe Expr)
-evalMany env [] = (env, return None)
-evalMany env (current@(Def func patterns body):other) = (nenv, return None) where
-    currentEnv = setByName env func currentLambda
-    currentLambda = Lambda patterns body nenv
-    othersEnv = fst $ evalMany currentEnv other
-    nenv = Map.union currentEnv othersEnv
+evalApp :: Env -> Expr -> [Safe Expr]
+evalApp env (App func arg) = substitute env lambdas arg where
+    lambdas = case func of 
+        lambda@(Lambda _ _ _) -> [Right lambda]
+        (Ident name)          -> getByName env name
+        otherwise             -> evalApp env func
 
 
-substitute :: Env -> Expr -> Expr -> Safe Expr
-substitute env (Lambda patterns body closure) arg = 
-    if length patterns == 0 then do
-        newLambda <- snd $ eval closure body
-        substitute env newLambda arg
+substitute :: Env -> [Safe Expr] -> Expr -> [Safe Expr]
+substitute env ((Right (Lambda patterns body closure)) : other) arg = 
+    if null patterns then 
+        substitute env ((snd $ eval closure body) : other) arg
     else
-        return $ (Lambda abstr body newClosure) where
-            newClosure = bindNames closure (zip patterns [value])
-            value = Lambda [] arg env
-            abstr = tail patterns
-substitute env _ _ = Left WrongArgument
+        if (snd $ eval env arg) `match` (head patterns) then
+            (lambda' : substitute env other arg) 
+        else
+            substitute env other arg
+    where
+        lambda' = return $ (Lambda abstr body closure')
+        closure' = bindNames closure (zip patterns [value])
+        value = Lambda [] arg env
+        abstr = tail patterns
+substitute env [] arg = [] 
+substitute env _ _ = [Left WrongArgument]
 
 
-getByName :: Env -> Name -> Safe Expr
+match :: Safe Expr -> Pattern -> Bool
+match (Left arg) _ = False
+match (Right arg) (NamePattern name) = True
+match (Right arg) (WildCardPattern) = True
+match (Right (ListExpr [])) (EmptyListPattern) = True
+match (Right (ListExpr (head:tail))) (ListPattern headPattern tailPattern) = 
+    match (return head) headPattern && match (return $ ListExpr tail) tailPattern
+match (Right (PairExpr (first,second))) (PairPattern (firstPattern,secondPattern)) = 
+    match (return first) firstPattern && match (return second) secondPattern
+match _ _ = False
+
+
+getByName :: Env -> Name -> [Safe Expr]
 getByName env name = case (Map.lookup name env) of
-    (Nothing) -> Left (NotInScope name)
-    (Just x)  -> x
+    (Nothing)    -> [Left (NotInScope name)]
+    (Just exprs) -> exprs
 
 
 setByName :: Env -> Name -> Expr -> Env
-setByName env name expr = Map.insert name (return expr) env
+setByName env name expr = case (Map.lookup name env) of
+    (Nothing)    -> Map.insert name [return expr] env
+    (Just exprs) -> Map.insert name ((return expr):exprs) env
 
 
 bindNames :: Env -> [(Pattern, Expr)] -> Env
@@ -147,9 +165,19 @@ bindNames env [] = env
 bindNames env ((pattern, expr) : bindings) = Map.union other current where
     other = bindNames env bindings
     current = case pattern of
-        (NamePattern name) -> setByName env name expr
-        (WildCardPattern) -> setByName env "_" expr
-        (PairPattern (p1, p2)) -> bindNames env [ (p1, App (Ident "fst") expr)
+        (NamePattern name)      -> setByName env name expr
+        (WildCardPattern)       -> env
+        (PairPattern (p1, p2))  -> bindNames env [ (p1, App (Ident "fst") expr)
                                                 , (p2, App (Ident "snd") expr)]
         (ListPattern head tail) -> bindNames env [ (head, App (Ident "head") expr)
                                                  , (tail, App (Ident "tail") expr)]
+        (EmptyListPattern)      -> env
+
+
+evalMany :: Env -> [Expr] -> (Env, Safe Expr)
+evalMany env [] = (env, return None)
+evalMany env (current@(Def func patterns body):other) = (nenv, return None) where
+    currentEnv = setByName env func currentLambda
+    currentLambda = Lambda patterns body nenv
+    othersEnv = fst $ evalMany currentEnv other
+    nenv = Map.union currentEnv othersEnv

@@ -16,24 +16,24 @@ createUnOpLambda op = Right $ Lambda
                                 (AppUnOp op (Ident "x"))
                                 Map.empty
 
-builtInFunctions :: [(Name, Safe Expr)]
-builtInFunctions =  [ ("+", createBinOpLambda Add)
-                    , ("-", createBinOpLambda Sub)
-                    , ("*", createBinOpLambda Mul)
-                    , ("`div`", createBinOpLambda Div)
-                    , ("&&", createBinOpLambda And)
-                    , ("||", createBinOpLambda Or)
-                    , ("==", createBinOpLambda Eq)
-                    , (">", createBinOpLambda Gt)
-                    , ("<", createBinOpLambda Ls)
-                    , ("concat", createBinOpLambda Concat)
-                    , (":", createBinOpLambda Push)
-                    , ("neg", createUnOpLambda Neg)
-                    , ("not", createUnOpLambda Not)
-                    , ("fst", createUnOpLambda Fst)
-                    , ("snd", createUnOpLambda Snd)
-                    , ("head", createUnOpLambda Head)
-                    , ("tail", createUnOpLambda Tail)]
+builtInFunctions :: [(Name, [Safe Expr])]
+builtInFunctions =  [ ("+", [createBinOpLambda Add])
+                    , ("-", [createBinOpLambda Sub])
+                    , ("*", [createBinOpLambda Mul])
+                    , ("`div`", [createBinOpLambda Div])
+                    , ("&&", [createBinOpLambda And])
+                    , ("||", [createBinOpLambda Or])
+                    , ("==", [createBinOpLambda Eq])
+                    , (">", [createBinOpLambda Gt])
+                    , ("<", [createBinOpLambda Ls])
+                    , ("concat", [createBinOpLambda Concat])
+                    , (":", [createBinOpLambda Push])
+                    , ("neg", [createUnOpLambda Neg])
+                    , ("not", [createUnOpLambda Not])
+                    , ("fst", [createUnOpLambda Fst])
+                    , ("snd", [createUnOpLambda Snd])
+                    , ("head", [createUnOpLambda Head])
+                    , ("tail", [createUnOpLambda Tail])]
 
 runtime :: Env
 runtime = Map.fromList builtInFunctions

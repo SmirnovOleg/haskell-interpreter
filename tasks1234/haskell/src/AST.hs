@@ -58,8 +58,7 @@ prettyPrint (CharLiteral x) = show x
 prettyPrint (ListExpr xs) = "[" ++ (intercalate "," (map prettyPrint xs)) ++ "]"
 prettyPrint (PairExpr x) = "(" ++ (prettyPrint $ fst x) ++ "," ++ (prettyPrint $ snd x) ++ ")"
 prettyPrint (Undefined) = "<undefined>"
-prettyPrint (None) = ""
-prettyPrint lambda@(Lambda patterns body closure) = "<lambda>"
+prettyPrint (Lambda patterns body closure) = "<lambda>"
 prettyPrint (Ident x) = show x
 prettyPrint _ = ""
 
@@ -73,4 +72,4 @@ data HaskellError = BaseError String
                 deriving (Show, Ord, Eq, Read)
 
 type Safe = Either HaskellError
-type Env = Map.Map Name (Safe Expr)
+type Env = Map.Map Name [Safe Expr]
