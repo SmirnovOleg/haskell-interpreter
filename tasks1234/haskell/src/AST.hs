@@ -1,6 +1,7 @@
 module AST where
 
 import qualified Data.Map as Map
+import Data.List (intercalate)
 
 
 type Name = String
@@ -42,7 +43,6 @@ data Expr = Ident          Name
 
           | IntLiteral     Int
           | CharLiteral    Char
-          | StringLiteral  String
           | BoolLiteral    Bool
           | ListExpr       [Expr]
           | PairExpr       (Expr, Expr)
@@ -55,9 +55,8 @@ prettyPrint :: Expr -> String
 prettyPrint (IntLiteral x) = show x
 prettyPrint (BoolLiteral x) = show x
 prettyPrint (CharLiteral x) = show x
-prettyPrint (StringLiteral x) = show x
-prettyPrint (ListExpr x) = show x
-prettyPrint (PairExpr x) = show x
+prettyPrint (ListExpr xs) = "[" ++ (intercalate "," (map prettyPrint xs)) ++ "]"
+prettyPrint (PairExpr x) = "(" ++ (prettyPrint $ fst x) ++ "," ++ (prettyPrint $ snd x) ++ ")"
 prettyPrint (Undefined) = "<undefined>"
 prettyPrint (None) = ""
 prettyPrint lambda@(Lambda patterns body closure) = "<lambda>"

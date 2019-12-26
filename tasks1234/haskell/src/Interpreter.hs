@@ -9,7 +9,6 @@ eval :: Env -> Expr -> (Env, Safe Expr)
 eval env int@(IntLiteral _) = (env, return int)
 eval env bool@(BoolLiteral _) = (env, return bool)
 eval env char@(CharLiteral _) = (env, return char)
-eval env (StringLiteral str) = eval env (ListExpr $ map (\c -> CharLiteral c) str)
 
 eval env (Undefined) = (env, (Left UndefinedNameError))
 eval env (None) = (env, return None)
@@ -58,12 +57,10 @@ eval env (AppBinOp l op r) = (env, result) where
             calc (IntLiteral a) Gt (IntLiteral b) = return $ BoolLiteral (a > b)
             calc _ Gt _  = Left $ TypeError "Int in > operator expected"
             
-            calc (ListExpr a) Concat (ListExpr b) = return $ ListExpr (a ++ b)
-            calc _ Concat _  = Left $ TypeError "List in ++ operator expected"
-            calc (IntLiteral a) Push (ListExpr b) = return $ ListExpr ((IntLiteral a) : b)
-            calc (BoolLiteral a) Push (ListExpr b) = return $ ListExpr ((BoolLiteral a) : b)
-            calc _ Push _  = 
-                Left $ TypeError "<Int or Bool> and <List of similar type> in : operator expected"
+            calc (ListExpr xs) Concat (ListExpr ys) = return $ ListExpr (xs ++ ys)
+            calc _ Concat _  = Left $ TypeError "Lists in `concat` operator expected"
+            calc (x) Push (ListExpr xs) = return $ ListExpr (x : xs)
+            calc _ Push _  = Left $ TypeError "Expr and [Expr] in : operator expected"
 
 eval env (AppUnOp op x) = (env, result) where
     result = do
@@ -147,6 +144,12 @@ setByName env name expr = Map.insert name (return expr) env
 
 bindNames :: Env -> [(Pattern, Expr)] -> Env
 bindNames env [] = env
-bindNames env ((NamePattern name, expr) : bindings) = Map.union other current where
+bindNames env ((pattern, expr) : bindings) = Map.union other current where
     other = bindNames env bindings
-    current = setByName env name expr
+    current = case pattern of
+        (NamePattern name) -> setByName env name expr
+        (WildCardPattern) -> setByName env "_" expr
+        (PairPattern (p1, p2)) -> bindNames env [ (p1, App (Ident "fst") expr)
+                                                , (p2, App (Ident "snd") expr)]
+        (ListPattern head tail) -> bindNames env [ (head, App (Ident "head") expr)
+                                                 , (tail, App (Ident "tail") expr)]

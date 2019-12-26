@@ -17,7 +17,7 @@ createUnOpLambda op = Right $ Lambda
                                 Map.empty
 
 builtInFunctions :: [(Name, Safe Expr)]
-builtInFunctions = [ ("+", createBinOpLambda Add)
+builtInFunctions =  [ ("+", createBinOpLambda Add)
                     , ("-", createBinOpLambda Sub)
                     , ("*", createBinOpLambda Mul)
                     , ("`div`", createBinOpLambda Div)

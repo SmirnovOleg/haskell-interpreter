@@ -75,7 +75,7 @@ stringParser :: Parser Expr
 stringParser = do
   (char '\"') 
   str <- manyTill anySingle (symbol "\"")
-  return $ StringLiteral str
+  return $ (ListExpr $ map (\c -> CharLiteral c) str)
 
 literalParser = choice [numberParser, charParser, stringParser, boolParser]
 
