@@ -157,7 +157,7 @@ getByName env name = case (Map.lookup name env) of
 setByName :: Env -> Name -> Expr -> Env
 setByName env name expr = case (Map.lookup name env) of
     (Nothing)    -> Map.insert name [return expr] env
-    (Just exprs) -> Map.insert name ((return expr):exprs) env
+    (Just exprs) -> Map.insert name (exprs ++ [return expr]) env
 
 
 bindNames :: Env -> [(Pattern, Expr)] -> Env
