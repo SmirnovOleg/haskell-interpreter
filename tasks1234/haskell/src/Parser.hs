@@ -279,7 +279,13 @@ programParser = do
 replParser :: Parser Expr
 replParser = do
   space
-  choice [try whereParser, try defParser, exprParser]
+  choice [try whereParser, try defParser, try letParser, exprParser]
+
+letParser :: Parser Expr
+letParser = do
+	string "let"
+	stmt <- choice [try whereParser, try defParser]
+	return $ Let stmt
 
 treeParser :: String -> IO ()
 treeParser str = do

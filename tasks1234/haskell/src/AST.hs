@@ -35,6 +35,7 @@ data Expr = Ident          Name
 
           | AppBinOp       Expr BinOp Expr
           | AppUnOp        UnOp Expr
+          | Let            Expr
 
           | IfThenElse     Expr Expr Expr
           | Where          Expr [Expr]
@@ -69,6 +70,7 @@ data HaskellError = BaseError String
                   | ParseError
                   | UndefinedNameError
                   | WrongArgument
+                  | NoInstanceForShow
                 deriving (Show, Ord, Eq, Read)
 
 type Safe = Either HaskellError
