@@ -17,15 +17,15 @@ Implemented features:
     - Pointless style 
     - Partial application
 - `if-then-else` expressions
-
+- `where` expressions
+- Pattern matching
 
 TODO
 - Parser
-    - [2] ++ [3]
-    - (((+) 2) 3)
+    - [2] ++ [3] 
+    - (+ 2) 3
+    - (head [\x->x+1, \x->x+2]) 1
+    - Pretty errors
+
 - Interpreter
-    - String output
-    - User-lambdas
-    - Pattern-matching
-    - Type checking
     - Type inference
