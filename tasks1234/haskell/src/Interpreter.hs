@@ -35,53 +35,12 @@ eval env (AppBinOp l op r) = (env, result) where
     result = do
         l <- snd $ eval env l
         r <- snd $ eval env r
-        calc l op r where
-            calc (IntLiteral a) Add (IntLiteral b) = return $ IntLiteral (a + b)
-            calc _ Add _  = Left $ TypeError "Int in + operator expected"
-            calc (IntLiteral a) Sub (IntLiteral b) = return $ IntLiteral (a - b)
-            calc _ Sub _  = Left $ TypeError "Int in - operator expected"
-            calc (IntLiteral a) Mul (IntLiteral b) = return $ IntLiteral (a * b)
-            calc _ Mul _  = Left $ TypeError "Int in * operator expected"
-            calc (IntLiteral a) Div (IntLiteral b) = return $ IntLiteral (a `div` b)
-            calc _ Div _  = Left $ TypeError "Int in `div` operator expected"
-            
-            calc (BoolLiteral a) And (BoolLiteral b) = return $ BoolLiteral (a && b)
-            calc _ And _  = Left $ TypeError "Bool in && operator expected"
-            calc (BoolLiteral a) Or (BoolLiteral b) = return $ BoolLiteral (a || b)
-            calc _ Or _  = Left $ TypeError "Bool in || operator expected"
-
-            calc (IntLiteral a) Eq (IntLiteral b) = return $ BoolLiteral (a == b)
-            calc (BoolLiteral a) Eq (BoolLiteral b) = return $ BoolLiteral (a == b)
-            calc _ Eq _  = Left $ TypeError "Int or Bool in == operator expected"
-            calc (IntLiteral a) Ls (IntLiteral b) = return $ BoolLiteral (a < b)
-            calc _ Ls _  = Left $ TypeError "Int in < operator expected"
-            calc (IntLiteral a) Gt (IntLiteral b) = return $ BoolLiteral (a > b)
-            calc _ Gt _  = Left $ TypeError "Int in > operator expected"
-            
-            calc (ListExpr xs) Concat (ListExpr ys) = return $ ListExpr (xs ++ ys)
-            calc _ Concat _  = Left $ TypeError "Lists in `concat` operator expected"
-            calc (x) Push (ListExpr xs) = return $ ListExpr (x : xs)
-            calc _ Push _  = Left $ TypeError "Expr and [Expr] in : operator expected"
+        calcBinOp l op r
 
 eval env (AppUnOp op x) = (env, result) where
     result = do
         x <- snd $ eval env x
-        calc op x where
-            calc Neg (IntLiteral a) = return $ IntLiteral (-a)
-            calc Neg _  = Left $ TypeError "Int in unary - operator expected"
-
-            calc Not (BoolLiteral a) = return $ BoolLiteral (not a)
-            calc Not _  = Left $ TypeError "Bool in not operator expected"
-
-            calc Fst (PairExpr (p1, _)) = return $ p1
-            calc Fst _  = Left $ TypeError "Pair in `fst` function expected"
-            calc Snd (PairExpr (_, p2)) = return $ p2
-            calc Snd _  = Left $ TypeError "Pair in `snd` function expected"
-            
-            calc Head (ListExpr (head:tail)) = return $ head
-            calc Head _  = Left $ TypeError "List in `head` function expected"
-            calc Tail (ListExpr (head:tail)) = return $ ListExpr tail
-            calc Tail _  = Left $ TypeError "List in `tail` function expected"
+        calcUnOp op x
 
 eval env (Ident name) = (env, result) where
     result = do
@@ -98,7 +57,7 @@ eval env application@(App func arg) =
 
 eval env (Def func patterns body) = (nenv, return None) where
     nenv = setByName env func lambda
-    lambda = Lambda patterns body nenv
+    lambda = foldConst nenv (Lambda patterns body nenv)
 
 eval env lambda@(Lambda patterns body closure) = (env, result) where 
     result = 
@@ -109,7 +68,8 @@ eval env lambda@(Lambda patterns body closure) = (env, result) where
 
 eval env (Where (Def func patterns body) helpers) = (nenv, return None) where
     nenv = setByName env func lambda
-    lambda = Lambda patterns body (Map.union whereEnv nenv)
+    closure = Map.union whereEnv nenv
+    lambda = foldConst closure (Lambda patterns body closure)
     whereEnv = fst $ evalMany env helpers
 
 eval env (Let (Where (Def func patterns body) helpers)) = 
@@ -119,6 +79,53 @@ eval env (Let (Def func patterns body)) =
     eval nenv (Def func patterns body) where
         nenv = Map.delete func env
 eval env _ = (env, Left $ WrongArgument)
+
+
+calcBinOp :: Expr -> BinOp -> Expr -> Safe Expr
+calcBinOp (IntLiteral a) Add (IntLiteral b) = return $ IntLiteral (a + b)
+calcBinOp _ Add _  = Left $ TypeError "Int in + operator expected"
+calcBinOp (IntLiteral a) Sub (IntLiteral b) = return $ IntLiteral (a - b)
+calcBinOp _ Sub _  = Left $ TypeError "Int in - operator expected"
+calcBinOp (IntLiteral a) Mul (IntLiteral b) = return $ IntLiteral (a * b)
+calcBinOp _ Mul _  = Left $ TypeError "Int in * operator expected"
+calcBinOp (IntLiteral a) Div (IntLiteral b) = return $ IntLiteral (a `div` b)
+calcBinOp _ Div _  = Left $ TypeError "Int in `div` operator expected"
+
+calcBinOp (BoolLiteral a) And (BoolLiteral b) = return $ BoolLiteral (a && b)
+calcBinOp _ And _  = Left $ TypeError "Bool in && operator expected"
+calcBinOp (BoolLiteral a) Or (BoolLiteral b) = return $ BoolLiteral (a || b)
+calcBinOp _ Or _  = Left $ TypeError "Bool in || operator expected"
+
+calcBinOp (IntLiteral a) Eq (IntLiteral b) = return $ BoolLiteral (a == b)
+calcBinOp (BoolLiteral a) Eq (BoolLiteral b) = return $ BoolLiteral (a == b)
+calcBinOp _ Eq _  = Left $ TypeError "Int or Bool in == operator expected"
+calcBinOp (IntLiteral a) Ls (IntLiteral b) = return $ BoolLiteral (a < b)
+calcBinOp _ Ls _  = Left $ TypeError "Int in < operator expected"
+calcBinOp (IntLiteral a) Gt (IntLiteral b) = return $ BoolLiteral (a > b)
+calcBinOp _ Gt _  = Left $ TypeError "Int in > operator expected"
+
+calcBinOp (ListExpr xs) Concat (ListExpr ys) = return $ ListExpr (xs ++ ys)
+calcBinOp _ Concat _  = Left $ TypeError "Lists in `concat` operator expected"
+calcBinOp (x) Push (ListExpr xs) = return $ ListExpr (x : xs)
+calcBinOp _ Push _  = Left $ TypeError "Expr and [Expr] in : operator expected"
+
+
+calcUnOp :: UnOp -> Expr -> Safe Expr
+calcUnOp Neg (IntLiteral a) = return $ IntLiteral (-a)
+calcUnOp Neg _  = Left $ TypeError "Int in unary - operator expected"
+
+calcUnOp Not (BoolLiteral a) = return $ BoolLiteral (not a)
+calcUnOp Not _  = Left $ TypeError "Bool in not operator expected"
+
+calcUnOp Fst (PairExpr (p1, _)) = return $ p1
+calcUnOp Fst _  = Left $ TypeError "Pair in `fst` function expected"
+calcUnOp Snd (PairExpr (_, p2)) = return $ p2
+calcUnOp Snd _  = Left $ TypeError "Pair in `snd` function expected"
+
+calcUnOp Head (ListExpr (head:tail)) = return $ head
+calcUnOp Head _  = Left $ TypeError "List in `head` function expected"
+calcUnOp Tail (ListExpr (head:tail)) = return $ ListExpr tail
+calcUnOp Tail _  = Left $ TypeError "List in `tail` function expected"
 
 
 processApp :: Env -> Expr -> [Safe Expr]
@@ -192,7 +199,13 @@ evalMany :: Env -> [Expr] -> (Env, Safe Expr)
 evalMany env [] = (env, return None)
 evalMany env ((Def func patterns body):other) = (nenv, return None) where
     currentEnv = setByName env func currentLambda
-    currentLambda = Lambda patterns body nenv
+    currentLambda = foldConst nenv (Lambda patterns body nenv)
+    othersEnv = fst $ evalMany currentEnv other
+    nenv = othersEnv
+evalMany env ((Let (Def func patterns body)):other) = (nenv, return None) where
+    env' = Map.delete func env
+    currentEnv = setByName env' func currentLambda
+    currentLambda = foldConst nenv (Lambda patterns body nenv)
     othersEnv = fst $ evalMany currentEnv other
     nenv = othersEnv
 
@@ -219,67 +232,77 @@ evalToWHNF env (AppBinOp l op r) = (env, result) where
     result = do
         l <- snd $ evalToWHNF env l
         r <- snd $ evalToWHNF env r
-        calc l op r where
-            calc (IntLiteral a) Add (IntLiteral b) = return $ IntLiteral (a + b)
-            calc _ Add _  = Left $ TypeError "Int in + operator expected"
-            calc (IntLiteral a) Sub (IntLiteral b) = return $ IntLiteral (a - b)
-            calc _ Sub _  = Left $ TypeError "Int in - operator expected"
-            calc (IntLiteral a) Mul (IntLiteral b) = return $ IntLiteral (a * b)
-            calc _ Mul _  = Left $ TypeError "Int in * operator expected"
-            calc (IntLiteral a) Div (IntLiteral b) = return $ IntLiteral (a `div` b)
-            calc _ Div _  = Left $ TypeError "Int in `div` operator expected"
-            
-            calc (BoolLiteral a) And (BoolLiteral b) = return $ BoolLiteral (a && b)
-            calc _ And _  = Left $ TypeError "Bool in && operator expected"
-            calc (BoolLiteral a) Or (BoolLiteral b) = return $ BoolLiteral (a || b)
-            calc _ Or _  = Left $ TypeError "Bool in || operator expected"
-
-            calc (IntLiteral a) Eq (IntLiteral b) = return $ BoolLiteral (a == b)
-            calc (BoolLiteral a) Eq (BoolLiteral b) = return $ BoolLiteral (a == b)
-            calc _ Eq _  = Left $ TypeError "Int or Bool in == operator expected"
-            calc (IntLiteral a) Ls (IntLiteral b) = return $ BoolLiteral (a < b)
-            calc _ Ls _  = Left $ TypeError "Int in < operator expected"
-            calc (IntLiteral a) Gt (IntLiteral b) = return $ BoolLiteral (a > b)
-            calc _ Gt _  = Left $ TypeError "Int in > operator expected"
-            
-            calc (ListExpr xs) Concat (ListExpr ys) = return $ ListExpr (xs ++ ys)
-            calc _ Concat _  = Left $ TypeError "Lists in `concat` operator expected"
-            calc (x) Push (ListExpr xs) = return $ ListExpr (x : xs)
-            calc _ Push _  = Left $ TypeError "Expr and [Expr] in : operator expected"
+        calcBinOp l op r
 
 evalToWHNF env (AppUnOp op x) = (env, result) where
     result = do
         x <- snd $ evalToWHNF env x
-        calc op x where
-            calc Neg (IntLiteral a) = return $ IntLiteral (-a)
-            calc Neg _  = Left $ TypeError "Int in unary - operator expected"
-
-            calc Not (BoolLiteral a) = return $ BoolLiteral (not a)
-            calc Not _  = Left $ TypeError "Bool in not operator expected"
-
-            calc Fst (PairExpr (p1, _)) = return $ p1
-            calc Fst _  = Left $ TypeError "Pair in `fst` function expected"
-            calc Snd (PairExpr (_, p2)) = return $ p2
-            calc Snd _  = Left $ TypeError "Pair in `snd` function expected"
-            
-            calc Head (ListExpr (head:tail)) = return $ head
-            calc Head _  = Left $ TypeError "List in `head` function expected"
-            calc Tail (ListExpr (head:tail)) = return $ ListExpr tail
-            calc Tail _  = Left $ TypeError "List in `tail` function expected"
+        calcUnOp op x
 
 evalToWHNF env (Ident name) = (env, result) where
     result = do
         lambda <- head $ getByName env name
-        snd $ eval env lambda
+        snd $ evalToWHNF env lambda
 
 evalToWHNF env application@(App func arg) = 
     if null $ processApp env application then
         (env, Left $ NotInScope "Non-exhaustive pattern")
     else (env,result) where
-        result = head $ processApp env application
+        result = do
+            lambda <- head $ processApp env application
+            snd $ evalToWHNF env lambda
 
 evalToWHNF env lambda@(Lambda patterns body closure) = (env, result) where
-    result = return lambda
+    result = 
+        if null patterns then
+            snd $ evalToWHNF closure body
+        else
+            return lambda
 
---foldConst :: Env -> Expr -> Expr
---foldConst env (App (App (Ident "+") (Ident a)) (Ident b)) = 
+
+foldConst :: Env -> Expr -> Expr
+foldConst env (IntLiteral a) = IntLiteral a
+foldConst env (BoolLiteral a) = BoolLiteral a
+
+foldConst env (Ident name) =
+    case head $ getByName env name of
+        Right lambda -> foldConst env lambda
+        Left _ -> Ident name
+foldConst env lambda@(Lambda patterns body closure) = 
+    if null patterns then foldConst closure body else lambda
+
+foldConst env app@(App (App (Ident "+") a) b) = 
+    case (foldConst env a, foldConst env b) of
+        (IntLiteral a', IntLiteral b') -> IntLiteral (a' + b')
+        otherwise -> app
+foldConst env app@(App (App (Ident "-") a) b) = 
+    case (foldConst env a, foldConst env b) of
+        (IntLiteral a', IntLiteral b') -> IntLiteral (a' - b')
+        otherwise -> app
+foldConst env app@(App (App (Ident "*") a) b) = 
+    case (foldConst env a, foldConst env b) of
+        (IntLiteral a', IntLiteral b') -> IntLiteral (a' * b')
+        otherwise -> app
+foldConst env app@(App (App (Ident "`div`") a) b) = 
+    case (foldConst env a, foldConst env b) of
+        (IntLiteral a', IntLiteral b') -> IntLiteral (a' `div` b')
+        otherwise -> app
+
+foldConst env app@(App (App (Ident "&&") a) b) = 
+    case (foldConst env a, foldConst env b) of
+        (BoolLiteral a', BoolLiteral b') -> BoolLiteral (a' && b')
+        otherwise -> app
+foldConst env app@(App (App (Ident "||") a) b) = 
+    case (foldConst env a, foldConst env b) of
+        (BoolLiteral a', BoolLiteral b') -> BoolLiteral (a' || b')
+        otherwise -> app
+foldConst env app@(App (Ident "not") a) = 
+    case (foldConst env a) of
+        BoolLiteral a' -> BoolLiteral (not a')
+        otherwise -> app
+foldConst env app@(App (Ident "-") a) = 
+    case (foldConst env a) of
+        IntLiteral a' -> IntLiteral (-a')
+        otherwise -> app
+
+foldConst _ expr = expr

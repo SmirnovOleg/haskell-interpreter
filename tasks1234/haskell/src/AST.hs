@@ -71,6 +71,7 @@ data HaskellError = BaseError String
                   | UndefinedNameError
                   | WrongArgument
                   | NoInstanceForShow
+                  | NotFoldable
                 deriving (Show, Ord, Eq, Read)
 
 type Safe = Either HaskellError

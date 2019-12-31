@@ -165,8 +165,8 @@ ifParser = do
 inlineWhereBlockParser :: Parser [Expr]
 inlineWhereBlockParser = do
 	lexeme $ string "where" 
-	defs <- between (symbol "{") (symbol "}") (sepBy1 (choice [try whereParser, defParser]) (symbol ";"))
-			<|> (:[]) <$> (choice [try whereParser, defParser])
+	defs <- between (symbol "{") (symbol "}") (sepBy1 (choice [try whereParser, try letParser, defParser]) (symbol ";"))
+			<|> (:[]) <$> (choice [try whereParser, try letParser, defParser])
 	return defs
 
 newLineWhereBlockParser :: Parser [Expr]
