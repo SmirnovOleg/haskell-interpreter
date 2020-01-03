@@ -306,3 +306,93 @@ foldConst env app@(App (Ident "-") a) =
         otherwise -> app
 
 foldConst _ expr = expr
+
+
+getTypeByName :: Name -> Env -> [Name] -> TypedEnv -> Safe ([Name], TypedEnv)
+getTypeByName name env tvs tenv = do
+    lambda <- head $ getByName env name
+    (tvs', tenv') <- inferType lambda tvs tenv
+    let Just tlambda = Map.lookup lambda tenv'
+    return (tvs', Map.insert (Ident name) tlambda tenv')
+
+
+inferType :: Expr -> [Name] -> TypedEnv -> Safe ([Name], TypedEnv)
+inferType expr@(IntLiteral _) tvs tenv =
+    case Map.lookup expr tenv of
+        Nothing -> return (tvs, Map.insert expr HInt tenv)
+        Just _  -> return (tvs, tenv)
+
+inferType expr@(Ident name) typeVars@(tv:tvs) tenv =
+    case Map.lookup expr tenv of
+        Nothing -> return (tvs, Map.insert expr (HVar tv) tenv)
+        Just _  -> return (typeVars, tenv)
+
+inferType expr@(Lambda [] body closure) typeVars tenv = do
+    (tvs', tenv') <- inferType body typeVars tenv
+    let Just tlambda = Map.lookup body tenv'
+    return (tvs', Map.insert expr tlambda tenv')
+
+inferType expr@(Lambda ((NamePattern p) : ps) body closure) typeVars@(tv:tvs) tenv = do
+    let tclosure = Map.delete (Ident p) tenv
+    (tvs', tenv') <- inferType (Lambda ps body closure) tvs tclosure
+    let Just tlambda = Map.lookup (Lambda ps body closure) tenv'
+    case Map.lookup (Ident p) tenv' of
+        Nothing -> do
+            let tenv'' = Map.insert (Ident p) (HVar tv) tenv'
+            return (tvs', Map.insert expr (HArrow (HVar tv) tlambda) tenv'')
+        Just tp -> return (tvs', Map.insert expr (HArrow tp tlambda) tenv')
+
+inferType expr@(App func arg) typeVars@(tv:tvs) tenv = do 
+    (tvs', tenv') <- inferType arg tvs tenv
+    let Just targ = Map.lookup arg tenv'
+    case func of
+        Ident _ ->
+            case Map.lookup func tenv' of
+                Just tfunc -> do 
+                    tenv'' <- unifyTypes (HArrow targ (HVar tv), tfunc) tenv'
+                    let Just (HArrow targ' tfunc') = Map.lookup func tenv''
+                    return (tvs', Map.insert expr tfunc' tenv'')
+                Nothing -> do
+                    let tenv'' = Map.insert func (HArrow targ (HVar tv)) tenv'
+                    return (tvs', Map.insert expr (HVar tv) tenv'')
+        Lambda _ _ _ -> do
+            (tvs'', tenv'') <- inferType func tvs' tenv'
+            let Just (HArrow targ' tres') = Map.lookup func tenv''
+            if areTypesCompatible targ' targ then do 
+                tenv''' <- unifyTypes (targ', targ) tenv''
+                let Just (HArrow targ'' tres'') = Map.lookup func tenv'''
+                return (tvs'', Map.insert expr tres'' tenv''')
+            else 
+                Left $ TypeError "Incompatible types"
+        App _ _  -> do 
+            (tvs'', tenv'') <- inferType func tvs' tenv'
+            let Just tfunc = Map.lookup func tenv''
+            tenv''' <- unifyTypes (tfunc, HArrow targ (HVar tv)) tenv''
+            let Just (HArrow targ' tres') = Map.lookup func tenv'''
+            return (tvs'', Map.insert expr tres' tenv''')
+
+
+unifyTypes :: (Type, Type) -> TypedEnv -> Safe TypedEnv
+unifyTypes (HInt, HInt) tenv = return tenv
+unifyTypes (HVar tv, t) tenv = return $ Map.map (substituteTypeVar tv t) tenv
+unifyTypes (t, HVar tv) tenv = return $ Map.map (substituteTypeVar tv t) tenv
+unifyTypes (HArrow targ tfunc, HArrow targ' tfunc') tenv = do 
+    tenv' <- unifyTypes (targ, targ') tenv
+    unifyTypes (tfunc, tfunc') tenv'
+unifyTypes (t, t') _ = Left $ TypeError "Non-unifying types"
+
+
+substituteTypeVar :: String -> Type -> Type -> Type
+substituteTypeVar _ _ HInt = HInt
+substituteTypeVar tv t (HVar tv') = 
+    if tv == tv' then t else HVar tv'
+substituteTypeVar tv t (HArrow targ tres) = 
+    HArrow (substituteTypeVar tv t targ) (substituteTypeVar tv t tres)
+
+
+areTypesCompatible :: Type -> Type -> Bool
+areTypesCompatible HInt _ = True
+areTypesCompatible (HVar _) _ = True
+areTypesCompatible (HArrow targ tres) (HArrow targ' tres')
+  = areTypesCompatible targ targ' && areTypesCompatible tres tres'
+areTypesCompatible _ _ = False

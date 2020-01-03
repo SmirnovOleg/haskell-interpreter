@@ -11,7 +11,8 @@ data Type = HInt
           | HChar
           | HList Type
           | HPair Type Type
-          | HLambda Type Type
+          | HArrow Type Type
+          | HVar Name
         deriving (Show, Ord, Eq, Read) 
 
 data Pattern = NamePattern  Name
@@ -76,3 +77,4 @@ data HaskellError = BaseError String
 
 type Safe = Either HaskellError
 type Env = Map.Map Name [Safe Expr]
+type TypedEnv = Map.Map Expr Type

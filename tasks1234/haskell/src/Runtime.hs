@@ -33,7 +33,14 @@ builtInFunctions =  [ ("+", [createBinOpLambda Add])
                     , ("fst", [createUnOpLambda Fst])
                     , ("snd", [createUnOpLambda Snd])
                     , ("head", [createUnOpLambda Head])
-                    , ("tail", [createUnOpLambda Tail])]
+                    , ("tail", [createUnOpLambda Tail]) ]
 
 runtime :: Env
 runtime = Map.fromList builtInFunctions
+
+tvs :: [Name]
+tvs = map (\x -> init $ tail $ show x) "abcdefghijklmnopqrstuvwxyz"
+
+typedRuntime :: TypedEnv
+typedRuntime = Map.fromList [ (Ident "+", HArrow HInt (HArrow HInt HInt))
+                            , (Ident "-", HArrow HInt (HArrow HInt HInt)) ]
