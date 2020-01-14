@@ -18,14 +18,13 @@ Implemented features:
     - Partial application
 - `if-then-else` expressions
 - `where` expressions
-- Pattern matching
+- Simple pattern matching
+- Simple Hindley-Milner type inference
 
 TODO
 - Parser
     - [2] ++ [3] 
     - (+ 2) 3
+    - (f (+) 2) 1
     - (head [\x->x+1, \x->x+2]) 1
     - Pretty errors
-
-- Interpreter
-    - Type inference

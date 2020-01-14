@@ -1,7 +1,7 @@
 module Main where
 
 import REPL
-import Runtime (runtime, tvs, typedRuntime)
+import Runtime (runtime)
 
 main :: IO ()
-main = runRepl runtime tvs typedRuntime
+main = runRepl runtime
