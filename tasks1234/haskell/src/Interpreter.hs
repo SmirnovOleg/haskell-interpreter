@@ -79,7 +79,7 @@ eval (Where (Def func patterns body) helpers) = do
             nenv = setByName env func lambda
             lambda = runReader (foldConst $ Lambda patterns body closure) closure
             closure = Map.union whereEnv nenv
-            whereEnv = evalMany env helpers
+            whereEnv = evalMany nenv helpers
     modify update
     return None
 

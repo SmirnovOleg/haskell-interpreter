@@ -17,6 +17,8 @@ dependencies:
 - pretty-simple
 - template-haskell
 - neat-interpolation
+- transformers
+- generic-deriving
 
 library:
   source-dirs: src
@@ -40,3 +42,5 @@ executables:
     - pretty-simple
     - template-haskell
     - neat-interpolation
+    - transformers
+    - generic-deriving
