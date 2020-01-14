@@ -106,25 +106,25 @@ processApplication _ _ = [Left $ TypeError "Expected function in application"]
 
 
 substitute :: Env -> [Safe (Expr, Type)] -> Expr -> [Safe (Expr, Type)]
-substitute env (Right (Lambda patterns body closure, _):other) arg = 
-    if null patterns then 
-        substitute env (processApplication closure body ++ other) arg
-    else 
-        case head patterns of
-            NamePattern _ -> lambda' : substitute env other arg
-            otherwise     ->
-                case runReader (runExceptT $ evalToWHNF arg) env of
-                    Left _     -> substitute env other arg
-                    Right expr -> 
-                        if expr `match` (head patterns) then
-                            lambda' : substitute env other arg 
-                        else
-                            substitute env other arg
-        where
-            lambda' = return (Lambda abstr body closure', HUnknown)
-            closure' = bindNames closure (zip patterns [value])
-            value = Lambda [] arg env
-            abstr = tail patterns
+substitute env (Right (Lambda [] body closure, _):other) arg = 
+    substitute env (processApplication closure body ++ other) arg
+
+substitute env (Right (Lambda patterns@(p:ps) body closure, _):other) arg =
+    case p of
+        NamePattern _ -> lambda' : substitute env other arg
+        otherwise     ->
+            case runReader (runExceptT $ evalToWHNF arg) env of
+                Left _     -> substitute env other arg
+                Right expr -> 
+                    if expr `match` (head patterns) then
+                        lambda' : substitute env other arg 
+                    else
+                        substitute env other arg
+    where
+        lambda' = return (Lambda ps body closure', HUnknown)
+        closure' = bindNames closure (zip patterns [value])
+        value = Lambda [] arg env
+
 substitute env (Right (expr,tp):other) arg = substitute env (reduce (expr,tp) : other) arg where
     reduce (expr,tp) = (runReader (runExceptT $ evalToWHNF expr) env) <&> (\x -> (x,tp))
 substitute _ [] _ = []
@@ -365,7 +365,16 @@ inferType expr@(PairExpr (a, b)) = do
 inferType expr@(ListExpr []) = do
     (tvs, tenv, env) <- get
     case List.lookup expr tenv of
-        Nothing -> put (tvs, (expr, HList (HVar "_")) : tenv, env)
+        Nothing -> put (tvs, (expr, HList HUnknown) : tenv, env)
+        Just _  -> return ()
+
+inferType expr@(ListExpr (x:[])) = do
+    (tvs, tenv, env) <- get
+    case List.lookup expr tenv of
+        Nothing -> do
+            (tvs', tenv', _) <- lift $ execStateT (inferType x) (tvs, tenv, env)
+            tx <- lift $ maybeToSafe $ List.lookup x tenv'
+            put (tvs', (expr, HList tx) : tenv', env)
         Just _  -> return ()
 
 inferType expr@(ListExpr (x:xs)) = do
